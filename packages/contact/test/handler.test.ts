@@ -26,6 +26,15 @@ const driftline: ContactConfig<"name" | "email" | "company" | "size" | "message"
 
 const valid = { name: "Ada", email: "ada@example.com", message: "GitLab, 40 people", about: "gitlab" };
 
+// The README's recipe, with `required` a strict subset of `fields`: `Field` must come from `fields` alone, or
+// `company` is rejected as not a field. This is a compile-time check; the handler itself is exercised below.
+const optionalFields = createContactHandler({
+  fields: { name: 120, email: 254, company: 120, message: 4000 },
+  required: ["name", "email", "message"],
+  email: "email",
+});
+void optionalFields;
+
 describe("the contact handler", () => {
   afterEach(() => vi.restoreAllMocks());
 
