@@ -1,6 +1,6 @@
 {
   "name": "@coralreefventures/site-tools",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Command-line tools for a Coral Reef public site: serve the static export as the host does, and gate it with Lighthouse.",
   "license": "MIT",
   "type": "module",

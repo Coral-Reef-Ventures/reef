@@ -12,7 +12,7 @@ export type LighthouseOptions = {
   root?: string;
   /** Where a failing page's report is left; `lighthouse` by default. */
   reportDir?: string;
-  /** The port the export is served on for the run. */
+  /** The port the export is served on for the run; a free one when not given, so a busy 3160 cannot end the run. */
   port?: number;
   /** The least score, 0 to 1, every category must reach on every page; 0.9 by default. */
   threshold?: number;
@@ -99,7 +99,7 @@ export const runLighthouse = async (options: LighthouseOptions = {}): Promise<Pa
   const log = options.log ?? console.log;
   const paths = options.paths?.length ? options.paths : await pagesFromSitemap(root);
   const chrome = options.chrome ?? (await playwrightChromium());
-  const { server, url: origin } = await serve({ root, port: options.port ?? 3160 });
+  const { server, url: origin } = await serve({ root, port: options.port ?? 0 });
   const results: PageResult[] = [];
   try {
     await mkdir(reportDir, { recursive: true });

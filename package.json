@@ -1,7 +1,7 @@
 {
   "name": "reef",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Shared packages for the Coral Reef family: the public-site shell, its tools, the Mantine theme builder, and the contact-form handler.",
   "packageManager": "pnpm@11.24.0",
