@@ -148,7 +148,12 @@ Registry reads lag publication by minutes: the workflow log printing `+ name@ver
       byte for byte; the site package renders every component through react-dom/server and walks its own source
       for client components), the smoke test, CI and release workflows. **Not published**: the npm organization does
       not exist yet, and the first publish is by hand (above).
-- [ ] First publish by hand and trusted publishers configured, then `v0.1.0`.
+- [x] First publish by hand, 2026-10-04: all four at 0.1.0, trusted publishers configured, `smoke:registry 0.1.0` passed.
+      Both sites consume them (Streamlane #319, Driftline #2): 21 files and about 1,400 lines gone from each, theme.css
+      unchanged by a byte, pages pixel-identical but for one Status pill and one folded-menu entry.
+- [x] 0.1.1, 2026-10-04: the contact handler infers its fields from `fields` alone (Driftline met the inference bug),
+      `reef-lighthouse` serves on a free port unless `--port` pins one (Streamlane met EADDRINUSE on 3160), and the
+      release-age note for consumers. The first release through `release.yml` and trusted publishing.
 - [ ] Streamlane and Driftline consume the four packages; their copies go.
 - [ ] Candidates the report also pointed at and this version leaves in the products: the Playwright specs
       (`pages.spec.ts`, `mobile.spec.ts`), `playwright.config.ts`, `PricingMeter` and the two forms. The meter and the
