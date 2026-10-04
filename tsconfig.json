@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": [
+    "packages/*/src/**/*.ts",
+    "packages/*/src/**/*.tsx",
+    "packages/*/test/**/*.ts",
+    "packages/*/test/**/*.tsx",
+    "test/**/*.ts",
+    "vitest.config.ts"
+  ],
+  // Fixtures for the server-only walk, which import through a site's "@/" alias that this repository has no root for.
+  "exclude": ["packages/site/test/server-only"]
+}

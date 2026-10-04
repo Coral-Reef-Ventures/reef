@@ -1,0 +1,19 @@
+packages:
+  - packages/*
+
+# A package asks for a sibling at the version they are released at together, so the published manifests need no
+# rewriting; this links those ranges to the workspace copy instead of fetching the last release. (No package depends
+# on a sibling yet; the setting is here for the first one that does.)
+linkWorkspacePackages: true
+
+# A version has to be three days old before it is installed, as in the products: a compromised release is usually
+# pulled within that window. The smoke test lifts it for the packages it has just packed.
+minimumReleaseAge: 3
+
+# pnpm runs no dependency's install script unless it is named here. esbuild checks its platform binary; the smoke
+# test bundles the site package with it. sharp arrives with Next and is only used to optimize images, which a static
+# export never does, so its build is declined rather than ignored with a warning on every install.
+allowBuilds:
+  esbuild: true
+  sharp: false
+  unrs-resolver: false
