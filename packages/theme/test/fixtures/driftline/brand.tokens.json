@@ -1,0 +1,35 @@
+{
+  "name": "Driftline",
+  "version": "1.0.0",
+  "color": {
+    "deep": "#2A5A8C",
+    "deep-soft": "#3D6E9F",
+    "tide": "#5F8FC4",
+    "tide-soft": "#A8C6E8",
+    "foam": "#F3F6FA",
+    "white": "#FFFFFF"
+  },
+  "type": {
+    "wordmark": {
+      "family": "Noto Sans",
+      "weight": 700,
+      "tracking": "-0.01em"
+    }
+  },
+  "mark": {
+    "grid": 128,
+    "radius": 28,
+    "offset": [2, -2],
+    "stroke": 7,
+    "tideline": { "x1": 30, "x2": 98, "y": 88, "opacity": 0.55 },
+    "drift": "M30 88C60 88 66 50 94 44",
+    "dots": [{ "cx": 30, "cy": 88 }, { "cx": 94, "cy": 44 }],
+    "dotRadius": 10
+  },
+  "lockup": {
+    "gap": 0.36,
+    "wordmark": 0.82,
+    "clearSpace": 1.0,
+    "minHeightPx": 18
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "name": "Streamlane",
+  "version": "1.0.0",
+  "color": {
+    "ink": "#123A3C",
+    "signal": "#F2A93B",
+    "paper": "#F4F7F6",
+    "white": "#FFFFFF",
+    "ink-soft": "#1E4C4E",
+    "signal-soft": "#F6C575",
+    "text": "#152526"
+  },
+  "type": {
+    "wordmark": {
+      "family": "Noto Sans",
+      "weight": 700,
+      "tracking": "-0.01em"
+    }
+  },
+  "mark": {
+    "grid": 24,
+    "stroke": 2.6,
+    "lanes": [7, 12, 17],
+    "short": 12,
+    "long": 18,
+    "dot": {
+      "cx": 19.2,
+      "cy": 7,
+      "r": 1.9
+    },
+    "small": {
+      "stroke": 3.2,
+      "lanes": [6, 12, 18],
+      "dot": {
+        "cx": 19.2,
+        "cy": 6,
+        "r": 2.4
+      },
+      "maxPx": 32
+    }
+  },
+  "tile": {
+    "radius": 0.22,
+    "mark": 0.62
+  },
+  "lockup": {
+    "gap": 0.36,
+    "wordmark": 0.82,
+    "clearSpace": 1.0,
+    "minHeightPx": 18
+  }
+}

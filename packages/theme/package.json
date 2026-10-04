@@ -1,0 +1,42 @@
+{
+  "name": "@coralreefventures/theme",
+  "version": "0.1.0",
+  "description": "Builds a product's Mantine theme from its brand tokens, and the stylesheet of CSS variables MantineProvider would inject for it.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Coral-Reef-Ventures/reef.git",
+    "directory": "packages/theme"
+  },
+  "homepage": "https://coralreefventures.com/",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "mantine",
+    "theme",
+    "design-tokens",
+    "coral-reef"
+  ],
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "peerDependencies": {
+    "@mantine/core": "9.6.3"
+  },
+  "devDependencies": {
+    "@mantine/core": "9.6.3",
+    "@mantine/hooks": "9.6.3",
+    "@types/react": "19.3.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  }
+}
