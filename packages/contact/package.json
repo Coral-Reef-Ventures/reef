@@ -1,0 +1,34 @@
+{
+  "name": "@coralreefventures/contact",
+  "version": "0.1.0",
+  "description": "The contact-form Lambda handler behind a Coral Reef public site: validates a posted message, drops bots, and hands the message on.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Coral-Reef-Ventures/reef.git",
+    "directory": "packages/contact"
+  },
+  "homepage": "https://coralreefventures.com/",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "lambda",
+    "contact-form",
+    "coral-reef"
+  ],
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@types/aws-lambda": "8.10.163"
+  }
+}
