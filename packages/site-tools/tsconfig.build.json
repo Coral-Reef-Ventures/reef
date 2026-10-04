@@ -1,0 +1,14 @@
+{
+  "//": "The one package with a build: a bin has to be JavaScript, because Node refuses to strip types under node_modules. The others ship TypeScript source. tsc rewrites the ./x.ts specifiers to ./x.js as it emits.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
+  },
+  "include": ["src/**/*.ts"]
+}
