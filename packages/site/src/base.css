@@ -1,0 +1,77 @@
+/*
+ * The rules every Coral Reef site shares, outside Mantine's layer so they win over its baseline without raising
+ * specificity. Import it in the root layout before the site's own globals.css, which sets the colors:
+ *
+ *   --site-text, --site-muted, --site-border, --site-paper, --site-link-underline,
+ *   --site-shadow (the folded menu's shadow, a tint of the darkest color), and
+ *   --site-attention-tint, --site-attention-edge, --site-attention-text (the Status tag's attention tone).
+ *
+ * The layout tokens below are the shell's own and the same on every site. Media queries use Mantine's breakpoints
+ * as literals (sm 48em, md 62em), since custom properties cannot appear in them.
+ */
+
+:root {
+  --site-max-width: 1200px;
+  --site-gutter: 24px;
+  --site-section-space: 72px;
+
+  @media (max-width: 48em) {
+    --site-gutter: 16px;
+    --site-section-space: 48px;
+  }
+}
+
+/* The text color the theme's components read; the default is pure black. */
+:root[data-mantine-color-scheme="light"] {
+  --mantine-color-text: var(--site-text);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--mantine-color-white);
+  color: var(--site-text);
+  overflow-wrap: break-word;
+}
+
+/*
+ * Inline links (anchors without a class; components style their own) are text-colored with the site's underline
+ * color: an accent on white is too light to read as text.
+ */
+a:not([class]) {
+  color: var(--site-text);
+  text-decoration-line: underline;
+  text-decoration-color: var(--site-link-underline);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+a:not([class]):hover {
+  text-decoration-color: var(--mantine-primary-color-filled);
+}
+
+:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 2px;
+}
+
+/* The skip link is visible only when focused. */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -48px;
+  z-index: 10;
+  padding: 8px 12px;
+  border-radius: var(--mantine-radius-sm);
+  background: var(--mantine-primary-color-filled);
+  color: var(--mantine-color-white);
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: 8px;
+}
