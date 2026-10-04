@@ -1,0 +1,51 @@
+{
+  "name": "@coralreefventures/site-tools",
+  "version": "0.1.0",
+  "description": "Command-line tools for a Coral Reef public site: serve the static export as the host does, and gate it with Lighthouse.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Coral-Reef-Ventures/reef.git",
+    "directory": "packages/site-tools"
+  },
+  "homepage": "https://coralreefventures.com/",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "static-site",
+    "lighthouse",
+    "coral-reef"
+  ],
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "bin": {
+    "reef-serve": "./dist/bin/reef-serve.js",
+    "reef-lighthouse": "./dist/bin/reef-lighthouse.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepack": "pnpm run build"
+  },
+  "peerDependencies": {
+    "@playwright/test": "1.63.0"
+  },
+  "peerDependenciesMeta": {
+    "@playwright/test": {
+      "optional": true
+    }
+  }
+}
