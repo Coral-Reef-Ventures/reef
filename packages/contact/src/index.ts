@@ -4,12 +4,15 @@ import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from "
 export type ContactMessage<Field extends string> = Record<Field, string>;
 
 export type ContactConfig<Field extends string> = {
-  /** Every field the form sends and the most characters each may hold. */
+  /** Every field the form sends and the most characters each may hold. `Field` is inferred from this and nothing else. */
   fields: Record<Field, number>;
-  /** The fields a message must fill in. */
-  required: readonly Field[];
+  /**
+   * The fields a message must fill in. `NoInfer`, because with `required` a strict subset of `fields` TypeScript
+   * otherwise infers `Field` from the shorter list and rejects the optional fields (found consuming 0.1.0 in Driftline).
+   */
+  required: readonly NoInfer<Field>[];
   /** The field that has to look like an email address. */
-  email: Field;
+  email: NoInfer<Field>;
   /**
    * The form's hidden field: people never fill it in, so a value means a bot, which is answered as if it worked and
    * never delivered. `website` unless the form names another.

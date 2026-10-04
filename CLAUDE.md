@@ -130,6 +130,9 @@ Registry reads lag publication by minutes: the workflow log printing `+ name@ver
   `generate-css.ts` becomes `writeThemeCss(file, themeCss(theme, { generatedBy, resolver }))`. The committed
   `theme.css` does not change.
 - `contact`: `handler.ts` becomes `export const handler = createContactHandler({ fields, required, email })`.
+- A product whose `pnpm-workspace.yaml` sets `minimumReleaseAge` (both do, 3 days) cannot install a release made
+  today without `minimumReleaseAgeExclude: ["@coralreefventures/*"]`; the packages are the family's own, so the
+  exclusion is right, not a workaround.
 
 ## Working rules
 
