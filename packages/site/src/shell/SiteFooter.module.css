@@ -1,0 +1,34 @@
+.footer {
+  border-top: 1px solid var(--site-border);
+  background: var(--mantine-color-white);
+}
+
+.inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2.4fr);
+  gap: 16px 48px;
+  max-width: var(--site-max-width);
+  margin-inline: auto;
+  padding: 32px var(--site-gutter) 48px;
+  box-sizing: border-box;
+  font-size: var(--mantine-font-size-xs);
+  line-height: 1.6;
+  color: var(--site-muted);
+
+  @media (max-width: 48em) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  & p {
+    margin: 0;
+  }
+
+  & a:not([class]) {
+    color: var(--site-muted);
+    text-decoration-thickness: 1px;
+  }
+
+  & a:not([class]):hover {
+    color: var(--site-text);
+  }
+}

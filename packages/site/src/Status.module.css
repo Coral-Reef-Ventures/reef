@@ -1,0 +1,24 @@
+/*
+ * Plain is a neutral tag. Attention is the site's one attention color, which globals.css names as three tokens
+ * (the attention hue's palest shade, a mid shade for the edge, its darkest for the text); the primary scale stands
+ * in where a site sets none.
+ */
+.status {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border: 1px solid var(--site-border);
+  border-radius: 999px;
+  background: var(--site-paper);
+  color: var(--site-text);
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 500;
+  line-height: 1.6;
+  white-space: nowrap;
+
+  &[data-tone="attention"] {
+    border-color: var(--site-attention-edge, var(--mantine-primary-color-3));
+    background: var(--site-attention-tint, var(--mantine-primary-color-0));
+    color: var(--site-attention-text, var(--mantine-primary-color-9));
+  }
+}

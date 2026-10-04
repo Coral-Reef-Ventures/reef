@@ -1,0 +1,43 @@
+.band {
+  padding-block: 56px;
+
+  &[data-tone="band"] {
+    background: var(--site-paper);
+    border-top: 1px solid var(--site-border);
+  }
+}
+
+.inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px 48px;
+  max-width: var(--site-max-width);
+  margin-inline: auto;
+  padding-inline: var(--site-gutter);
+  box-sizing: border-box;
+}
+
+.copy {
+  flex: 1 1 28rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.3;
+}
+
+.text {
+  margin: 6px 0 0;
+  font-size: var(--mantine-font-size-md);
+  line-height: 1.55;
+  color: var(--site-muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
