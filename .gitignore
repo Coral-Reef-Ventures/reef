@@ -1,0 +1,9 @@
+node_modules/
+packages/*/dist/
+*.tsbuildinfo
+*.log
+.DS_Store
+
+# Written by the site-tools tests and by a consumer's Lighthouse run.
+lighthouse/
+test-results/

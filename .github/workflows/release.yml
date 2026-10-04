@@ -1,0 +1,75 @@
+name: Release
+on:
+  push:
+    tags: ["v[0-9]*"]
+  workflow_dispatch:
+
+# id-token lets pnpm publish by OIDC trusted publishing and attach provenance, which ties each published tarball to
+# the commit and workflow run that produced it.
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # A tag can be pushed from anywhere, so the release re-proves the whole thing rather than trusting that CI ran
+      # on this commit.
+      - run: pnpm run lint
+      - run: pnpm run typecheck
+      - run: pnpm test
+      - run: pnpm run smoke:packed
+
+      # Only on a tag: on a manual run GITHUB_REF_NAME is the branch, which can never equal a version. A manual run
+      # publishes whatever version the checked-out commit declares, which is the point of having the trigger.
+      - name: The tag must match the version being published
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$version" ]; then
+            echo "tag $GITHUB_REF_NAME does not match package version $version" >&2
+            exit 1
+          fi
+
+      # Publishing has to be safe to repeat. The registry answers a second publish of a version that already exists
+      # with a 403, which would fail the run and leave every package after it unpublished, so a re-pushed tag or a
+      # run after a partial publish skips what is already on the registry and publishes the rest. The list comes out
+      # of the release script, in dependency order, so the two cannot disagree about what ships.
+      #
+      # Nothing configures a credential, deliberately. These packages use npm's trusted publishing: pnpm exchanges
+      # the OIDC token GitHub mints for this run (which is why the job asks for id-token: write) for a short-lived
+      # registry token. An .npmrc carrying an empty _authToken is the trap: the npm client tries that credential, is
+      # refused, and never reaches the OIDC path. --no-git-checks because a tag checkout is a detached HEAD.
+      #
+      # A package npm has never seen cannot be published this way: trusted publishing is configured per package on
+      # npmjs.com, and a package that does not exist cannot have a publisher. The first publish of a new package is
+      # by hand (CLAUDE.md, Publishing); this step then stops at it with ENEEDAUTH, and a re-run after the publisher
+      # is configured skips what is out and carries on.
+      - name: Publish what is not already on the registry
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          names="$(node -p "require('./package.json').scripts.release.match(/@coralreefventures\/[a-z-]+/g).join(' ')")"
+          for name in $names; do
+            # Asked over plain HTTPS rather than through a package manager, so the check cannot fail for a
+            # credential reason and read as "not published".
+            if curl -sf -o /dev/null "https://registry.npmjs.org/${name//\//%2f}/$version"; then
+              echo "$name@$version is already published"
+            else
+              pnpm --filter "$name" publish --provenance --no-git-checks
+            fi
+          done
+
+      # The same check against what the registry now serves, retrying while the registry catches up.
+      - name: Install the release from the registry and use it
+        run: pnpm run smoke:registry "$(node -p "require('./package.json').version")"
