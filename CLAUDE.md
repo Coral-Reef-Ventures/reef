@@ -225,7 +225,7 @@ All pinned exactly, all MIT, Apache-2.0, BSD or ISC. The first group came with t
 - [x] 0.3.0, 2026-10-05: `SiteConfig.headerTools`, an optional slot in the header for something that is not a link
       (coralreefventures.com's color-scheme control), after the actions and before the menu button at every width.
       Additive, so a minor bump in 0.x, and lockstep: every package moves to 0.3.0. Released from CI on `v0.3.0`.
-- [ ] 0.4.0, 2026-10-05: the coming-soon page (`src/door/page.ts`). A page load without a session no longer goes
+- [x] 0.4.0, 2026-10-05: the coming-soon page (`src/door/page.ts`). A page load without a session no longer goes
       straight to the door: it gets a small page on the product's own domain, the product's mark and name, "<Name> is
       coming soon." and "Open for now to invited guests.", a "Have an invitation? Sign in" button and a "Get involved"
       link to the door's `/get-involved/?site=<id>` (Gary's choice, 2026-10-05, so approved copy). The button goes to
@@ -243,7 +243,8 @@ All pinned exactly, all MIT, Apache-2.0, BSD or ISC. The first group came with t
       `__Host-crv_door_seen=1` (30 days, no identity), sign-out clears it, and a top-level page load carrying it goes
       straight to the door instead of the page. It also found `/_door/signin` set the `SameSite=None` state cookie for
       any GET, so another site's `<img>` could overwrite a visitor's state mid-sign-in; it now answers only a top-level
-      navigation (`isTopLevelNavigation`: a document request whose `Sec-Fetch-Dest`, when sent, is `document`).
+      navigation (`isTopLevelNavigation`: a document request whose `Sec-Fetch-Dest`, when sent, is `document`). Released
+      from CI on the `v0.4.0` tag after merge.
 - [ ] Streamlane and Driftline consume the four packages; their copies go.
 - [ ] Candidates the report also pointed at and this version leaves in the products: the Playwright specs
       (`pages.spec.ts`, `mobile.spec.ts`), `playwright.config.ts`, `PricingMeter` and the two forms. The meter and the
