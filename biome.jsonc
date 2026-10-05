@@ -73,9 +73,9 @@
       }
     },
     {
-      // Vitest discovers its config by convention and requires a default export, and a CSS module's type
-      // declaration describes a bundler that hands class names over as one.
-      "includes": ["**/vitest.config.ts", "**/*.d.ts"],
+      // Vitest and Playwright discover their config and global setup by convention and require a default export,
+      // and a CSS module's type declaration describes a bundler that hands class names over as one.
+      "includes": ["**/vitest.config.ts", "**/playwright.config.ts", "**/e2e/global-setup.ts", "**/*.d.ts"],
       "linter": {
         "rules": {
           "style": {
