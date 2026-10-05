@@ -15,7 +15,7 @@ const action = ({ label, href, kind, hideBelow }: HeaderAction) => (
 );
 
 /**
- * The header: lockup, the sections, and the actions. A server component with plain links, so a page that ships no
+ * The header: lockup, the sections, the actions, and the site's header tools if it has any. A server component with plain links, so a page that ships no
  * client code can carry it; below the md breakpoint the sections fold into a <details> menu, which needs no script,
  * and any action hidden at some width is listed there too.
  */
@@ -36,6 +36,7 @@ export const SiteHeader = <Key extends string>({
       </nav>
       <div className={classes.actions}>
         {site.actions.map(action)}
+        {site.headerTools == null ? null : <div className={classes.tools}>{site.headerTools}</div>}
         <details className={classes.menu}>
           <summary className={classes.menuButton} aria-label="Menu">
             <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">

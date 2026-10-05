@@ -1,6 +1,6 @@
 {
   "name": "@coralreefventures/theme",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Builds a product's Mantine theme from its brand tokens, and the stylesheet of CSS variables MantineProvider would inject for it.",
   "license": "MIT",
   "type": "module",
