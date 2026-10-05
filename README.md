@@ -47,6 +47,11 @@ Every dependency is pinned exactly and is MIT, Apache-2.0, BSD or ISC.
 | [`@coralreefventures/theme`](packages/theme) | The Mantine theme builder and the CSS-variables generator, taking a product's brand tokens |
 | [`@coralreefventures/contact`](packages/contact) | The contact-form Lambda handler, parametrized by the form's fields and what to do with a message |
 
+[`tools/sites/`](tools/sites) is family tooling rather than a package: `sites` (or `pnpm sites` here) starts every
+site on the family's port map, 3000 to 3006, under one [dekit](https://github.com/pvolok/dekit) runner, and opens one
+terminal UI where each site's output shows and each can be stopped, killed and restarted. Its README has the map, the
+keys and why dekit. It publishes nothing and adds no dependency (`brew install mprocs` provides dekit).
+
 ## Licence
 
 MIT, Copyright (c) 2026 Coral Reef Ventures, LLC.

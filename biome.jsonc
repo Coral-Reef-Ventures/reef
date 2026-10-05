@@ -64,8 +64,8 @@
   },
   "overrides": [
     {
-      // The command-line tools and the smoke test report to the console.
-      "includes": ["packages/site-tools/src/**", "test/consumer/**"],
+      // The command-line tools, the sites launcher and the smoke test report to the console.
+      "includes": ["packages/site-tools/src/**", "tools/**", "test/consumer/**"],
       "linter": {
         "rules": {
           "suspicious": { "noConsole": "off" }
