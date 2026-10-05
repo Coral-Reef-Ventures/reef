@@ -44,6 +44,14 @@ export type SiteConfig<Key extends string = string> = {
   lockup: ReactNode;
   /** The header's actions, in order. */
   actions: readonly HeaderAction[];
+  /**
+   * Something in the header that is not a link, such as a color-scheme control: rendered in the actions group after
+   * the actions and before the folded menu's button, vertically centered in the bar, at every width. It is never
+   * hidden below a breakpoint and never copied into the folded menu. The header stays a server component, so this is
+   * the product's own element (a client component of the product's is fine; the shell imports none). Absent, the
+   * header renders exactly as it did without it.
+   */
+  headerTools?: ReactNode;
   footer: {
     /** The footer's first line: who makes the product and where its source is. */
     maker: ReactNode;

@@ -181,10 +181,13 @@ yet, so release history is the Status list below until the first of either; no s
 - [x] 0.1.1, 2026-10-04: the contact handler infers its fields from `fields` alone (Driftline met the inference bug),
       `reef-lighthouse` serves on a free port unless `--port` pins one (Streamlane met EADDRINUSE on 3160), and the
       release-age note for consumers. The first release through `release.yml` and trusted publishing.
-- [ ] 0.2.0, the door gate in `site-tools` (`reef-door-bundle`, `src/door/`), 2026-10-04: unit tests for every
+- [x] 0.2.0, the door gate in `site-tools` (`reef-door-bundle`, `src/door/`), 2026-10-04: unit tests for every
       step of the gate's request order, the bundle's shape and the canonical-next cases; the browser suite in three
       browsers; the smoke test runs the packed bin and starts the bundle it writes away from any node_modules. Released
       from CI on the `v0.2.0` tag after merge: `site-tools` already has its trusted publisher, so no hand publish.
+- [ ] 0.3.0, 2026-10-05: `SiteConfig.headerTools`, an optional slot in the header for something that is not a link
+      (coralreefventures.com's color-scheme control), after the actions and before the menu button at every width.
+      Additive, so a minor bump in 0.x, and lockstep: every package moves to 0.3.0. Released from CI on `v0.3.0`.
 - [ ] Streamlane and Driftline consume the four packages; their copies go.
 - [ ] Candidates the report also pointed at and this version leaves in the products: the Playwright specs
       (`pages.spec.ts`, `mobile.spec.ts`), `playwright.config.ts`, `PricingMeter` and the two forms. The meter and the
