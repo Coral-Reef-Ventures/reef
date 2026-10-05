@@ -3,7 +3,10 @@
 Shared packages for the Coral Reef family: Streamlane (`coral-reef-ventures/streamlane`) and Driftline
 (`Coral-Reef-Ventures/driftline`). The two products stay in their own repositories; what both use lives here and is
 published to npm under the `@coralreefventures` scope, public, MIT, copyright Coral Reef Ventures, LLC. The scope is
-`@coralreefventures` because `@coral-reef` was taken and the company's domain is coralreefventures.com.
+`@coralreefventures` because `@coral-reef` was taken and the company's domain is coralreefventures.com. It also holds
+the conventions Markset and Intentset follow, in `docs/conventions.md`: the family's rules for commits, releases,
+changelogs, decision records, READMEs, CLAUDE.md files and sites, written once. Invariant 4 governs packages, not
+documents, so the conventions need no second consumer to live here.
 
 The reason it exists: Driftline's `apps/site` was created by copying Streamlane's, and jscpd then measured 87
 cross-repository clones, 2,191 lines, between the two sites (10 files byte-identical, about 40 near-identical). The
@@ -11,7 +14,7 @@ four packages of 0.1.0 are the ones that measurement pointed at. Once both sites
 (983 lines) go; the rest are the products' own pages, pricing meters and forms, which are product copy, not shared
 code.
 
-## Invariants
+## Design invariants
 
 These are non-negotiable. If a proposed change conflicts with one, the change loses.
 
@@ -58,12 +61,23 @@ packages/
                deliver function. (The brief guessed recipient, subject and origin as the parameters; the two
                handlers differed only in their field tables, and CORS lives on the function URL in each product's
                backend.ts, so those are not here.)
+docs/
+  conventions.md    the conventions Markset, Intentset and reef follow (2026-10-05); under 300 lines, a test holds it
 test/
-  tooling.test.ts   the repository's shape: scope, version, pins, licence, release order, no product scope in src
+  tooling.test.ts   the repository's shape: scope, version, pins, licence, release order and workflow, READMEs,
+                    lockfile, no product scope in src
   consumer/         smoke.ts packs every package and installs them into an empty pnpm project; consumer-entry.tsx is
                     bundled there with esbuild (as a consumer's Next, tsx or Vitest would transpile the source) and
                     consumer.mjs checks every package and runs both bins
-.github/workflows/  ci.yml (lint, typecheck, test, smoke on pull requests and main) and release.yml (on a v* tag)
+.github/workflows/  ci.yml (lint, typecheck, test, e2e, smoke on pull requests and main) and release.yml (on a v* tag)
+README.md           the pitch, Status (the version in backticks, which a test reads), Develop, Documentation, Layout
+CLAUDE.md, LICENSE, SECURITY.md (report privately to security@coralreefventures.com)
+package.json        the version every package is released at, the release order, the repository and homepage
+pnpm-workspace.yaml, pnpm-lock.yaml   workspace, linkWorkspacePackages, minimumReleaseAge, allowBuilds
+.nvmrc              24
+biome.jsonc         lint and format rules (below)
+tsconfig.base.json  the products' compiler settings; tsconfig.json typechecks every src/, test/ and e2e/ against it
+vitest.config.ts    one test runner for every package; playwright.config.ts is the door gate's browser suite
 ```
 
 ## Toolchain
@@ -82,12 +96,7 @@ test/
   `allowImportingTsExtensions` would refuse `./x.ts`; `site-tools` uses `.ts` specifiers, which its build rewrites.
 - **No build step in development.** `site-tools` compiles to `dist/` on `prepack`, so `pnpm pack` and `pnpm publish`
   build it, and nothing else does. Its tests import `src/`.
-- Dependencies, all exact: `@biomejs/biome` 2.5.15, `typescript` 5.9.3, `vitest` 4.1.11, `@types/node` 24.19.0 and
-  `esbuild` 0.28.2 at the root (esbuild only for the smoke test's bundle); `react`, `react-dom`, `@types/react*` 19.3.0,
-  `next` 16.3.6 and `@mantine/core`/`hooks` 9.6.3 as the packages' dev and peer dependencies, the versions both sites
-  use; `@types/aws-lambda` 8.10.163 as `contact`'s one dependency, since its signature is typed with it.
-  `@playwright/test` 1.63.0 is an optional peer of `site-tools`, resolved at run time for Chromium's path, and since
-  0.2.0 a root dev dependency too, for the door gate's browser suite (Apache-2.0; the door plan names it).
+- Every dependency is pinned exactly and listed under Approved dependencies, with what it is for.
 - `pnpm run e2e` (once: `pnpm exec playwright install chromium firefox webkit`) runs `packages/site-tools/e2e/` in
   Chromium, Firefox and WebKit. Global setup builds site-tools, runs the real `reef-door-bundle` twice into a
   temporary directory (fetching the JWKS over https from a stand-in door, trusted through `NODE_EXTRA_CA_CERTS`),
@@ -109,6 +118,8 @@ test/
   yet; the first one that does must come after it in that list.
 
 ## Publishing, and the trap
+
+The family's release procedure and the trap are in `docs/conventions.md`; this section is reef's own values.
 
 **A package npm has never seen cannot be published by CI.** Trusted publishing is configured per package on
 npmjs.com, a package that does not exist cannot have a publisher configured, and the first publish of a new package
@@ -153,11 +164,45 @@ Registry reads lag publication by minutes: the workflow log printing `+ name@ver
 
 ## Working rules
 
+Family conventions: reef's `docs/conventions.md`. Departures, each with its reason:
+
+- **No CHANGELOG or decision records yet**, so release history is the Status list below until the first of either, and
+  the version test checks the manifests and the README's Status line but not a CHANGELOG heading.
+- **No site**, so the site rules do not apply.
+- **No spec**, so CLAUDE.md has no source-of-truth line and no Conventions section: the packages' contracts are their
+  tests. It has two sections of its own instead, Publishing and Consuming a package, because its consumers are the
+  products.
+- **No source export condition.** Three packages ship TypeScript source as their entry point and site-tools' tests
+  import `src/`, so nothing resolves `dist/` in development and there is nothing for a condition to choose between.
+- **No conformance suite, and nothing imports `@markset-lang/parser`**, so the conformance-suite and two-condition
+  tests have nothing to hold.
+- **Not yet ported:** the manifests are not checked against the form npm would rewrite them into. site-tools' bins lead
+  with `./`, which `npm pkg fix` drops, and its tooling test pins that form; changing it is a package change with a
+  release, for its own pull request.
+
+Every other tooling test in the conventions is in `test/tooling.test.ts`.
+
 - Commit messages are one plain sentence saying what changed and why.
 - A change to a package and the test that pins it land in the same commit. When a shared component changes in a way a
   site would see, both sites are the ones to check; `packages/site/README.md` lists what was settled where they had
   drifted.
 - Don't add dependencies without asking, and never one outside the licence allowlist.
+
+### Approved dependencies
+
+All pinned exactly, all MIT, Apache-2.0, BSD or ISC. The first group came with the reef plan, 2026-10-04.
+
+- `@biomejs/biome` 2.5.15 (dev, root), 2026-10-04: lint and format.
+- `typescript` 5.9.3 (dev, root), 2026-10-04: typecheck, and site-tools' build on prepack.
+- `vitest` 4.1.11 (dev, root), 2026-10-04: every package's tests and the repository's own.
+- `@types/node` 24.19.0 (dev, root), 2026-10-04: Node's types for the tools and tests.
+- `esbuild` 0.28.2 (dev, root), 2026-10-04: the smoke test's consumer bundle only; nothing else imports it.
+- `react`, `react-dom`, `@types/react`, `@types/react-dom` 19.3.0, `next` 16.3.6, `@mantine/core` and
+  `@mantine/hooks` 9.6.3 (dev and peer, in the packages), 2026-10-04: the versions both sites use. Mantine is a peer
+  for its CSS variables and is never imported by `site`.
+- `@types/aws-lambda` 8.10.163 (dependency, `contact`), 2026-10-04: its handler's signature is typed with it.
+- `@playwright/test` 1.63.0 (optional peer, `site-tools`, for Chromium's path at run time; dev, root, since 0.2.0),
+  2026-10-04: the door gate's browser suite in three browsers (the door plan names it).
 
 ## Status
 
