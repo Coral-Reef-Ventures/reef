@@ -1,7 +1,12 @@
-import { readdir, readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { describe, expect, it } from "vitest";
+
+import { bundleDoor, gateFiles } from "../packages/site-tools/src/door/package.ts";
+import { jwksOf, makeKey } from "../packages/site-tools/test/door-fixtures.ts";
 
 /**
  * The shape of the repository: every package publishable under the one scope, at the one version, with exact
@@ -158,6 +163,37 @@ describe("the toolchain", () => {
       for (const file of await sources(join(root, "packages", dir, "src"))) {
         expect(await readFile(file, "utf8"), file).not.toMatch(products);
       }
+    }
+  });
+});
+
+describe("the door's deployment", () => {
+  // The lock depends on this shape: a Static route, or a static/ directory, would be served by Amplify around the gate.
+  it("has exactly one route, /* to Compute, and no static/ directory", async () => {
+    const work = await mkdtemp(join(tmpdir(), "reef-tooling-door-"));
+    try {
+      await mkdir(join(work, "out"));
+      await writeFile(join(work, "out", "index.html"), "<h1>Home</h1>");
+      for (const file of gateFiles) {
+        await mkdir(dirname(join(work, "dist", file)), { recursive: true });
+        await writeFile(join(work, "dist", file), "");
+      }
+      await writeFile(join(work, "jwks.json"), JSON.stringify(jwksOf(makeKey())));
+      const dest = join(work, ".amplify-hosting");
+      await bundleDoor({
+        site: "tooling",
+        out: join(work, "out"),
+        dest,
+        doorUrl: "https://door.example",
+        hosts: ["site.example"],
+        jwksUrl: pathToFileURL(join(work, "jwks.json")).href,
+        gateRoot: join(work, "dist"),
+      });
+      const manifest = JSON.parse(await readFile(join(dest, "deploy-manifest.json"), "utf8"));
+      expect(manifest.routes).toEqual([{ path: "/*", target: { kind: "Compute", src: "default" } }]);
+      expect((await readdir(dest)).sort()).toEqual(["compute", "deploy-manifest.json"]);
+    } finally {
+      await rm(work, { recursive: true, force: true });
     }
   });
 });

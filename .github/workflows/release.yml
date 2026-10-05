@@ -28,6 +28,8 @@ jobs:
       - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm test
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - run: pnpm run e2e
       - run: pnpm run smoke:packed
 
       # Only on a tag: on a manual run GITHUB_REF_NAME is the branch, which can never equal a version. A manual run

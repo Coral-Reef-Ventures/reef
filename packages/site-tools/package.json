@@ -1,7 +1,7 @@
 {
   "name": "@coralreefventures/site-tools",
-  "version": "0.1.1",
-  "description": "Command-line tools for a Coral Reef public site: serve the static export as the host does, and gate it with Lighthouse.",
+  "version": "0.2.0",
+  "description": "Command-line tools for a Coral Reef public site: serve the static export as the host does, gate it with Lighthouse, and lock it behind the door.",
   "license": "MIT",
   "type": "module",
   "engines": {
@@ -19,6 +19,7 @@
   "keywords": [
     "static-site",
     "lighthouse",
+    "amplify",
     "coral-reef"
   ],
   "files": [
@@ -28,7 +29,8 @@
   ],
   "bin": {
     "reef-serve": "./dist/bin/reef-serve.js",
-    "reef-lighthouse": "./dist/bin/reef-lighthouse.js"
+    "reef-lighthouse": "./dist/bin/reef-lighthouse.js",
+    "reef-door-bundle": "./dist/bin/reef-door-bundle.js"
   },
   "exports": {
     ".": {
