@@ -64,8 +64,9 @@ packages/
 tools/
   sites/       `sites`, the launcher for every site on the family's port map (2026-10-05): sites (a bash shim, so a
                symlink such as ~/.local/bin/sites finds it) runs sites.ts by type stripping; config.ts is the map, and
-               README.md shows it as a table a test holds to config.ts. Each run writes .dekit/dekit.yaml (gitignored,
-               absolute paths) and drives dekit's runner with -C. Family tooling, not a package: nothing publishes it,
+               README.md shows it as a table a test holds to config.ts. Each run writes dekit.yaml to
+               ~/.local/state/coral-reef-sites/ (one runner per machine, so no worktree can strand one) and drives
+               dekit's runner with -C there. Family tooling, not a package: nothing publishes it,
                and invariant 2 does not reach it, since it names the products' repositories by necessity.
 docs/
   conventions.md    the conventions Markset, Intentset and reef follow (2026-10-05); under 300 lines, a test holds it
@@ -108,11 +109,13 @@ vitest.config.ts    one test runner for every package; playwright.config.ts is t
 - **`sites`** (`tools/sites/`, `pnpm sites` here, `~/.local/bin/sites` on Gary's machine) runs every site on the port
   map, 3000 Atlas to 3006 driftline.app, under **dekit** (Homebrew's `mprocs` formula, renamed in 0.10), which is a
   machine tool and not a dependency. It uses dekit's own runner mode rather than `dekit mprocs`: stop signals go to
-  each task's whole process group, a TCP ready check marks each port, every action has a command by task name, and the
-  sites outlive the terminal (`q` detaches, `Q` or `sites stop` stops them). Tried both on 2026-10-05; the README has
+  each task's whole process group, a TCP ready check on each port shows in `sites status` (the TUI shows `UP` either
+  way), every action has a command by task name, and the sites outlive the terminal (`q` detaches and says how many
+  are still running, `Q` or `sites stop` stops them; one runner per machine). Tried both on 2026-10-05; the README has
   the reasons. A preflight skips a site, never kills anything: missing repository or install (it prints the `pnpm
   install`), old Node, a port held by another process (reported with pid, command and directory), or a Next app whose
-  own `dev` script names another port. `SITES_ROOT` overrides where the repositories are (default: reef's parent,
+  own `dev` script names another port. A restart makes the same checks before it stops a running site, and a site that
+  dies within two seconds of starting is reported with its last output and counted as failed. `SITES_ROOT` overrides where the repositories are (default: reef's parent,
   worktrees included). The map changes in config.ts and the README table together; each repository's own default
   port follows it.
 - `pnpm run e2e` (once: `pnpm exec playwright install chromium firefox webkit`) runs `packages/site-tools/e2e/` in

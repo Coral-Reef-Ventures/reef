@@ -16,7 +16,9 @@ import {
   nodeSatisfies,
   repositories,
   rootOf,
+  runnerDirOf,
   SITES,
+  unavailable,
 } from "../tools/sites/config.ts";
 
 /**
@@ -62,8 +64,23 @@ describe("the dekit.yaml it writes", () => {
     }
   });
 
-  it("keeps a task whose command cannot be found, as one that fails, so the list keeps its order", () => {
-    expect(dekitConfig("/repos", new Map())).toContain('cmd: ["false"]');
+  it("keeps a task whose command cannot be found, as one that says why and fails, so the list keeps its order", async () => {
+    const text = dekitConfig(
+      "/repos",
+      new Map([["markset", { error: 'markset\'s package.json has no "site:watch"' }]]),
+    );
+    const reason = 'markset\'s package.json has no "site:watch"';
+    expect(text).toContain(
+      `cmd: [${unavailable(reason)
+        .map((part) => JSON.stringify(part))
+        .join(", ")}]`,
+    );
+    expect(text).not.toContain('"false"');
+    const [command, ...args] = unavailable("no repository at /x y/'z'");
+    await expect(run(command ?? "sh", args)).rejects.toMatchObject({
+      code: 1,
+      stderr: "sites: no repository at /x y/'z'. Fix that, then run sites again.\n",
+    });
   });
 });
 
@@ -72,6 +89,11 @@ describe("finding things", () => {
     expect(defaultRoot("/code/reef/tools/sites")).toBe("/code");
     expect(defaultRoot("/code/reef/.claude/worktrees/sites/tools/sites")).toBe("/code");
     expect(rootOf("/code/reef/tools/sites", { SITES_ROOT: "/elsewhere" })).toBe("/elsewhere");
+  });
+
+  it("keeps one runner per machine, outside every checkout", () => {
+    expect(runnerDirOf({}, "/Users/g")).toBe("/Users/g/.local/state/coral-reef-sites");
+    expect(runnerDirOf({ XDG_STATE_HOME: "/state" }, "/Users/g")).toBe("/state/coral-reef-sites");
   });
 
   it("runs a script the repository defines, and refuses one it does not", () => {

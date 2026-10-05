@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { connect } from "node:net";
 import { join, relative, sep } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 
 import {
   commandFor,
@@ -12,6 +13,7 @@ import {
   nodeSatisfies,
   ROOT_VARIABLE,
   rootOf,
+  runnerDirOf,
   SITES,
   type Site,
 } from "./config.ts";
@@ -23,8 +25,8 @@ import {
 
 const toolDir = import.meta.dirname;
 const root = rootOf(toolDir, process.env);
-/** The runner's project directory: dekit.yaml is written here on each run, with this machine's absolute paths. */
-const runnerDir = join(toolDir, ".dekit");
+/** The runner's project directory, one per machine: dekit.yaml is written here on each run. */
+const runnerDir = runnerDirOf(process.env);
 
 const HELP = `sites: start every Coral Reef site, and watch, stop and restart each from one terminal UI.
 
@@ -42,7 +44,10 @@ In the TUI: j/k or the arrows pick a site; s starts it, x stops it, X kills it, 
 list and the output (to scroll, or type into the site); z zooms the output; q leaves the TUI with the sites running;
 Q stops every site and the runner, as sites stop does; ? shows every key.
 
+q leaves the sites running in the background; Q or sites stop is what stops them.
+
 The repositories are found beside reef's checkout (${root}); set ${ROOT_VARIABLE} to look elsewhere.
+The runner, and the dekit.yaml it reads, are in ${runnerDir}, one per machine.
 Needs dekit (brew install mprocs: Homebrew's mprocs formula installs dekit since 0.10).`;
 
 class Failure extends Error {}
@@ -66,6 +71,8 @@ const run = (command: string, args: string[]): string =>
   spawnSync(command, args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).stdout ?? "";
 
 const runnerRunning = (): boolean => dekit(["runner", "status"]).stdout.startsWith("[running]");
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Each task's state by name, from the runner; empty when the runner is not running. */
 const taskStates = (): Map<string, string> => {
@@ -95,10 +102,11 @@ const commandOf = (site: Site): { argv: string[] } | { error: string } => {
 
 /** Write dekit.yaml when it changed; a running runner reloads it, and its tasks keep running. */
 const writeConfig = (): void => {
-  const commands = new Map<string, string[]>();
+  const commands = new Map<string, string[] | { error: string }>();
   for (const site of SITES) {
-    const command = commandOf(site);
-    if ("argv" in command) commands.set(site.name, command.argv);
+    const dir = repoDir(site);
+    const command = existsSync(dir) ? commandOf(site) : { error: `no repository at ${dir}` };
+    commands.set(site.name, "argv" in command ? command.argv : command);
   }
   const text = dekitConfig(root, commands);
   const file = join(runnerDir, "dekit.yaml");
@@ -157,7 +165,7 @@ type Verdict =
   | { kind: "outside"; holder: Holder }
   | { kind: "skip"; reason: string };
 
-/** Whether a site can start: its repository, the port, its install, its command and Node, then what to warn about. */
+/** Whether a site can start: its repository, the port, then its install, command, Node and declared port. */
 const preflight = (site: Site, state: string | undefined): Verdict => {
   const dir = repoDir(site);
   if (!existsSync(dir))
@@ -168,6 +176,18 @@ const preflight = (site: Site, state: string | undefined): Verdict => {
   if (holder) {
     return { kind: "skip", reason: `port ${site.port} is held by ${describe(holder)}; it was not killed` };
   }
+  return startable(site);
+};
+
+/**
+ * Whether the site's repository can run it now, apart from the port: its repository, install, command, Node and
+ * declared port. A restart of a running site asks this too, before stopping it, so it cannot swap a working site for
+ * one that fails.
+ */
+const startable = (site: Site): Extract<Verdict, { kind: "start" | "skip" }> => {
+  const dir = repoDir(site);
+  if (!existsSync(dir))
+    return { kind: "skip", reason: `no repository at ${dir} (set ${ROOT_VARIABLE} to look elsewhere)` };
   if (!existsSync(join(dir, "node_modules"))) {
     return { kind: "skip", reason: `not installed; run: cd ${dir} && pnpm install` };
   }
@@ -211,33 +231,90 @@ const line = (site: Site, verdict: string, note = ""): void => {
   console.log(`  ${labelOf(site).padEnd(22)}${verdict.padEnd(9)}${note}`);
 };
 
-/** Carries out a preflight's verdict and reports it; false when the site was skipped or failed to start. */
-const act = (site: Site, verdict: Verdict): boolean => {
+/** What became of carrying out a verdict: a site skipped is not a failure, one that did not start is. */
+type Outcome = "started" | "left" | "skipped" | "failed";
+
+/** Carries out a preflight's verdict and reports it. */
+const act = (site: Site, verdict: Verdict): Outcome => {
   switch (verdict.kind) {
     case "running":
       line(site, "running");
-      return true;
+      return "left";
     case "outside":
       line(site, "outside", `running outside the launcher: ${describe(verdict.holder)}; left alone`);
-      return true;
+      return "left";
     case "skip":
       line(site, "skipped", verdict.reason);
-      return false;
+      return "skipped";
     case "start": {
       const started = dekit(["start", site.name]);
       line(site, started.status === 0 ? "starting" : "failed", started.status === 0 ? "" : started.stdout);
       for (const warning of verdict.warnings) line(site, "warning", warning);
-      return started.status === 0;
+      return started.status === 0 ? "started" : "failed";
     }
   }
 };
 
-const up = (attach: boolean): number => {
+/** How long a site that was just started has to die for the launcher to say so: a bad pin or script dies within it. */
+const SETTLE_MS = 2000;
+
+/**
+ * Waits SETTLE_MS, then reports each of these sites that has already exited, with the last lines of its output.
+ * Returns how many had.
+ */
+const settle = async (started: readonly Site[]): Promise<number> => {
+  if (started.length === 0) return 0;
+  await sleep(SETTLE_MS);
+  const states = taskStates();
+  let died = 0;
+  for (const site of started) {
+    const state = states.get(site.name);
+    if (isActive(state)) continue;
+    died++;
+    line(site, "exited", `it stopped within ${SETTLE_MS / 1000} seconds (${state ?? "gone"}); its last output:`);
+    const screen = stripVTControlCharacters(dekit(["screen", site.name]).stdout).replaceAll("\r", "");
+    const last = screen
+      .split("\n")
+      .map((text) => text.trimEnd())
+      .filter((text) => text)
+      .slice(-6);
+    for (const text of last) console.log(`      ${text}`);
+  }
+  return died;
+};
+
+/** Set by Ctrl-C while sites are being started: the loop stops at the next site and says how far it got. */
+let interrupted = false;
+
+const up = async (attach: boolean): Promise<number> => {
   writeConfig();
   const states = taskStates();
   console.log(`sites: the repositories in ${root}`);
-  const results = SITES.map((site) => act(site, preflight(site, states.get(site.name))));
-  const failed = results.includes(false);
+  const onInterrupt = (): void => {
+    interrupted = true;
+  };
+  process.once("SIGINT", onInterrupt);
+  const outcomes: Outcome[] = [];
+  const started: Site[] = [];
+  for (const site of SITES) {
+    // A turn of the event loop, so a Ctrl-C during the last site's synchronous start is seen before the next.
+    await new Promise(setImmediate);
+    if (interrupted) break;
+    const outcome = act(site, preflight(site, states.get(site.name)));
+    outcomes.push(outcome);
+    if (outcome === "started") started.push(site);
+  }
+  await new Promise(setImmediate);
+  process.off("SIGINT", onInterrupt);
+  if (interrupted) {
+    console.log(
+      `sites: interrupted after checking ${outcomes.length} of ${SITES.length} sites; ` +
+        `${started.length} started and still running. sites finishes the job; sites stop stops them.`,
+    );
+    return 130;
+  }
+  const died = await settle(started);
+  const failed = died > 0 || outcomes.includes("failed");
   if (!attach || !process.stdout.isTTY) {
     console.log("Open the TUI with: sites. Stop everything with: sites stop.");
     return failed ? 1 : 0;
@@ -246,7 +323,16 @@ const up = (attach: boolean): number => {
     console.log("Nothing is running, so there is no TUI to open.");
     return 1;
   }
-  return dekit(["attach"], true).status;
+  const status = dekit(["attach"], true).status;
+  // q detaches rather than stopping anything, which mprocs' q does not; say so every time.
+  const active = [...taskStates().values()].filter(isActive).length;
+  if (active > 0) {
+    console.log(
+      `sites: ${active} ${active === 1 ? "site is" : "sites are"} still running in the background. ` +
+        "sites stop stops them; sites opens the TUI again.",
+    );
+  }
+  return status;
 };
 
 const stop = (): number => {
@@ -267,7 +353,21 @@ const stop = (): number => {
   return 0;
 };
 
-const restart = (name: string | undefined): number => {
+/** Restarts a running site, checking first, so a restart that could not start it again leaves the running one alone. */
+const restartRunning = async (site: Site): Promise<number> => {
+  const verdict = startable(site);
+  if (verdict.kind === "skip") {
+    line(site, "refused", `${verdict.reason}; the running site was left alone`);
+    return 1;
+  }
+  const restarted = dekit(["restart", site.name]);
+  line(site, restarted.status === 0 ? "restarted" : "failed", restarted.status === 0 ? "" : restarted.stdout);
+  if (restarted.status !== 0) return 1;
+  for (const warning of verdict.warnings) line(site, "warning", warning);
+  return (await settle([site])) > 0 ? 1 : 0;
+};
+
+const restart = async (name: string | undefined): Promise<number> => {
   const site = SITES.find((candidate) => candidate.name === name);
   if (!site) {
     console.error(`sites restart: name a site: ${SITES.map((candidate) => candidate.name).join(", ")}`);
@@ -275,14 +375,11 @@ const restart = (name: string | undefined): number => {
   }
   writeConfig();
   const state = taskStates().get(site.name);
-  if (isActive(state)) {
-    const restarted = dekit(["restart", site.name]);
-    line(site, restarted.status === 0 ? "restarted" : "failed", restarted.status === 0 ? "" : restarted.stdout);
-    return restarted.status === 0 ? 0 : 1;
-  }
+  if (isActive(state)) return restartRunning(site);
   // Stopped: start it as sites does, unless the port is someone else's, or the site's own run outside the launcher.
-  const verdict = preflight(site, state);
-  return act(site, verdict) && verdict.kind === "start" ? 0 : 1;
+  const outcome = act(site, preflight(site, state));
+  if (outcome !== "started") return 1;
+  return (await settle([site])) > 0 ? 1 : 0;
 };
 
 const listening = (port: number): Promise<boolean> =>
@@ -297,8 +394,12 @@ const listening = (port: number): Promise<boolean> =>
     socket.once("timeout", () => done(false));
   });
 
-/** HTTP status when the site answers within three seconds, "listening" when it accepts but is still compiling. */
-const answer = async (port: number): Promise<string> => {
+/**
+ * HTTP status when the site answers within three seconds, "listening" when it accepts but is still compiling. A site
+ * whose task is still starting gets a TCP check only, since a GET would set a Next dev server compiling its home page.
+ */
+const answer = async (port: number, state: string | undefined): Promise<string> => {
+  if (isActive(state) && state !== "ready") return (await listening(port)) ? "listening" : "no";
   try {
     const response = await fetch(`http://localhost:${port}/`, {
       redirect: "manual",
@@ -313,12 +414,14 @@ const answer = async (port: number): Promise<string> => {
 const status = async (): Promise<number> => {
   const states = taskStates();
   const running = states.size > 0;
-  const answers = await Promise.all(SITES.map((site) => answer(site.port)));
+  // Who holds each port first, then whether it answers, so a row is not two moments a build apart.
+  const holders = SITES.map((site) => holderOf(site.port));
+  const answers = await Promise.all(SITES.map((site) => answer(site.port, states.get(site.name))));
   console.log(
     `${"site".padEnd(18)}${"port".padEnd(6)}${"task".padEnd(12)}${"answers".padEnd(11)}${"pid".padEnd(8)}directory`,
   );
   for (const [index, site] of SITES.entries()) {
-    const holder = holderOf(site.port);
+    const holder = holders[index];
     const task = running ? (states.get(site.name) ?? "-") : "-";
     console.log(
       `${site.name.padEnd(18)}${String(site.port).padEnd(6)}${task.padEnd(12)}${(answers[index] ?? "no").padEnd(11)}` +

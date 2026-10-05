@@ -12,7 +12,13 @@ sites restart crv        # restart one site, or start it if it is stopped
 sites --help
 ```
 
-Inside reef, `pnpm sites` runs the same command (`pnpm sites status`, and so on).
+- **Install dekit once:** `brew install mprocs` (Homebrew's mprocs formula puts `dekit` on PATH since 0.10).
+- **`q` leaves the sites running** in the background, which is not what mprocs' `q` does; `Q` or `sites stop` stops
+  them, and `sites` says how many are still up each time you leave the TUI.
+- **A skipped site says why, and nothing is ever killed** that the launcher did not start.
+
+Inside reef, `pnpm sites` runs the same command (`pnpm sites status`, and so on). `sites --no-attach` exits 1 only
+when a site failed to start or died within two seconds of starting; a skipped site is reported, not a failure.
 
 ## The port map
 
@@ -62,7 +68,9 @@ Key bindings are dekit's defaults, set in `~/.config/dekit/config.yaml` if you w
 
 ## Before it starts anything
 
-`sites` and `sites restart` check each site first and skip the ones that would fail, rather than failing them all:
+`sites` and `sites restart` check each site first and skip the ones that would fail, rather than failing them all. A
+restart of a running site makes the same checks before it stops anything, and refuses with the reason rather than
+swap a working site for one that cannot start:
 
 - **The repository** is beside reef's checkout (reef's parent directory, found from the script's own location, and
   from a worktree under `.claude/worktrees/` too). `SITES_ROOT=/some/dir sites` looks elsewhere.
@@ -74,6 +82,14 @@ Key bindings are dekit's defaults, set in `~/.config/dekit/config.yaml` if you w
   site is skipped. **Nothing is ever killed that the launcher did not start.**
 - **Streamlane needs `amplify_outputs.json`** at its root: without it the product starts but has no backend to sign in
   against, so it is a warning, not a skip.
+
+After starting, it waits two seconds and reports any site that has already exited (a missing script, an Atlas pin npm
+does not have), with the last lines of its output, as a failure. Ctrl-C while it is starting stops at the next site
+and says how far it got; `sites` again finishes the job.
+
+Next 16's `next dev` writes `AGENTS.md` and `CLAUDE.md` into an app directory that has neither, so the first start of
+a Next app can leave those two files untracked in its repository. Streamlane commits them for `apps/web`; each
+repository commits or ignores its own.
 
 ## Why dekit, and its own mode rather than `dekit mprocs`
 
@@ -90,21 +106,26 @@ against the real sites on 2026-10-05: Streamlane's `next dev`, Driftline's `tsx 
    only. In the trial its stops still freed every port, because the pty hangs up on the children when pnpm exits, but
    that leans on every child honouring SIGHUP. Signalling pnpm alone, as anything outside a pty does, was seen to
    leave Atlas's server orphaned on 3000.
-2. **Ready checks.** Each task waits on a TCP check of its port, so the list shows `ready` only when the site answers,
-   not merely when its command started. The mprocs mode has none.
+2. **Ready checks.** Each task has a TCP check of its port, so `sites status` and `dekit ls` say `ready` only once the
+   site answers, not merely when its command started (the TUI's list shows `UP` for both). The mprocs mode has none.
 3. **Every action has a command line**, by task name: `dekit restart crv` is what `sites restart crv` runs, and
    `dekit ls --json` is what `sites status` reads. The mprocs mode's remote control (`--ctl`) acts on the selected
    process, picked by its place in the list.
 4. **The sites outlive the terminal.** Closing the window, or `q`, leaves them running, and `sites` reattaches; `Q` or
-   `sites stop` is the way to stop them. A foreground TUI loses every site when its terminal goes.
+   `sites stop` is the way to stop them. A foreground TUI loses every site when its terminal goes. This is the one
+   behaviour that differs from mprocs as Gary chose it, so `sites` says how many are still running whenever the TUI
+   closes.
 
 ## How it works
 
 `sites` is a bash shim that finds its own directory through any symlink and runs `sites.ts` with Node's type
-stripping; `config.ts` is the map. Each run writes `.dekit/dekit.yaml` beside them (ignored by git: it holds this
-machine's absolute paths) with one task per site, in port order, each in its repository's root with `ready: {tcp:
-<port>}`, and runs dekit with `-C .dekit`, so the runner is this checkout's own. A changed file is reloaded by a
-running runner without stopping its sites. The runner takes its environment, PATH and Node included, from the
-terminal that first starts it.
+stripping; `config.ts` is the map. Each run writes `dekit.yaml` to `~/.local/state/coral-reef-sites/` (or
+`$XDG_STATE_HOME/coral-reef-sites/`) with one task per site, in port order, each in its repository's root with
+`ready: {tcp: <port>}`, and runs dekit with `-C` there. **There is one runner per machine**, outside every checkout,
+so `sites stop` from any checkout reaches sites a worktree started, and removing that worktree cannot strand a runner
+holding the ports. A changed file is reloaded by a running runner without stopping its sites. A site whose command
+cannot be read (no repository, no script) is written as a command that prints why and exits 1, so an `r` in the TUI
+says what is wrong. The runner takes its environment, PATH and Node included, from the terminal that first starts
+it.
 
 On Gary's machine `~/.local/bin/sites` is a symlink to `tools/sites/sites` in reef's main checkout.

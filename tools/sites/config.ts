@@ -1,3 +1,4 @@
+import { homedir } from "node:os";
 import { dirname, join, resolve, sep } from "node:path";
 
 /**
@@ -110,6 +111,14 @@ export const rootOf = (toolDir: string, env: Readonly<Record<string, string | un
   return named ? resolve(named) : defaultRoot(toolDir);
 };
 
+/**
+ * The runner's project directory, where dekit.yaml is written: one per machine, outside every checkout, so `sites stop`
+ * from any checkout reaches the sites a worktree started, and removing that worktree cannot strand a runner holding the
+ * ports. `$XDG_STATE_HOME/coral-reef-sites`, or `~/.local/state/coral-reef-sites`.
+ */
+export const runnerDirOf = (env: Readonly<Record<string, string | undefined>>, home = homedir()): string =>
+  join(env.XDG_STATE_HOME || join(home, ".local", "state"), "coral-reef-sites");
+
 export type Manifest = {
   scripts?: Record<string, string>;
   dependencies?: Record<string, string>;
@@ -165,17 +174,35 @@ export const labelOf = (site: Site): string => `${site.name} ${site.port}`;
 const quote = (text: string): string => JSON.stringify(text);
 
 /**
- * The dekit.yaml the runner reads: one task per site, in port order, each in its repository's root with a ready check
- * on its port. JSON strings are YAML strings, so every value is written with JSON.stringify.
+ * The command for a site that cannot run as things stand: it prints why and fails, so an `r` in the TUI says what is
+ * wrong instead of silently running nothing. The reason is the shell's $1, so it needs no quoting.
  */
-export const dekitConfig = (root: string, commands: ReadonlyMap<string, readonly string[]>): string => {
+export const unavailable = (reason: string): string[] => [
+  "sh",
+  "-c",
+  'echo "sites: $1. Fix that, then run sites again." >&2; exit 1',
+  "sites",
+  reason,
+];
+
+/**
+ * The dekit.yaml the runner reads: one task per site, in port order, each in its repository's root with a ready check
+ * on its port. A command is an argv, or the reason there is none. JSON strings are YAML strings, so every value is
+ * written with JSON.stringify.
+ */
+export const dekitConfig = (
+  root: string,
+  commands: ReadonlyMap<string, readonly string[] | { readonly error: string }>,
+): string => {
   const lines = [
     "# Written by tools/sites/sites on each run, from tools/sites/config.ts. Edit that file, not this one.",
     "tasks:",
   ];
   for (const site of SITES) {
-    // A site whose command cannot be found still gets a task, so the list keeps its order; the preflight skips it.
-    const argv = commands.get(site.name) ?? ["false"];
+    // A site whose command cannot be found still gets a task, so the list keeps its order; the preflight skips it,
+    // and the task itself says why if it is started from the TUI.
+    const command = commands.get(site.name) ?? { error: `no command for ${site.name}` };
+    const argv = "error" in command ? unavailable(command.error) : command;
     lines.push(
       `  ${site.name}:`,
       `    label: ${quote(labelOf(site))}`,
