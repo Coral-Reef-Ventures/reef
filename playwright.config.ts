@@ -8,7 +8,8 @@ import { defineConfig, devices } from "@playwright/test";
  * bundle's server.mjs there with no node_modules anywhere above it, and puts TLS in front of each, as Amplify's CDN
  * does, beside a stand-in door that signs tickets with a test key. What is pinned in the browsers rather than in the
  * unit tests is what only a browser decides: that the state cookie travels on the door's cross-site POST, that the
- * session cookie is kept from that POST's response, and that every navigation without one ends at the door.
+ * session cookie is kept from that POST's response, and that every navigation without one gets the coming-soon page,
+ * painted under its own CSP, whose button ends at the door.
  */
 export default defineConfig({
   testDir: "./packages/site-tools/e2e",

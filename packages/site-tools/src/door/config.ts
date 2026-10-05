@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 
+import { type PageConfig, type PageConfigFile, parsePageConfig } from "./page.ts";
 import { type Jwks, parseJwks } from "./verify.ts";
 
 /** One stop on the sign-out walk: a site behind the door, by id, and the host its gate answers on. */
@@ -20,9 +21,11 @@ export type GateConfigFile = {
   signout: SignoutStop[];
   /** The door's public keys. */
   jwks: { keys: unknown[] };
+  /** The coming-soon page a visitor without a session sees: the product's name, mark and colors. Optional (0.4.0). */
+  page?: PageConfigFile;
 };
 
-export type GateConfig = Omit<GateConfigFile, "jwks"> & { keys: Jwks; issuer: string };
+export type GateConfig = Omit<GateConfigFile, "jwks" | "page"> & { keys: Jwks; issuer: string; page: PageConfig };
 
 const siteId = /^[a-z0-9][a-z0-9-]{0,31}$/;
 const hostName = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:\d{1,5})?$/;
@@ -79,6 +82,7 @@ export const parseGateConfig = (value: unknown): GateConfig => {
   }
   const signout = checkSignout(file.signout ?? []);
   const keys = parseJwks(file.jwks);
+  const page = parsePageConfig(file.page, file.site);
   return {
     version: 1,
     site: file.site,
@@ -88,6 +92,7 @@ export const parseGateConfig = (value: unknown): GateConfig => {
     hostHeader: file.hostHeader,
     signout,
     keys,
+    page,
   };
 };
 

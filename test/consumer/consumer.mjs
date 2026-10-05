@@ -73,6 +73,10 @@ execFileSync("pnpm", [
   gateHost,
   "--jwks-url",
   pathToFileURL("jwks.json").href,
+  "--name",
+  "Consumer Site",
+  "--accent",
+  "#2a5a8c",
 ]);
 const compute = mkdtempSync(join(tmpdir(), "reef-gate-"));
 cpSync(".amplify-hosting/compute/default", compute, { recursive: true });
@@ -106,6 +110,16 @@ try {
   const noSession = await get("/");
   assert.equal(noSession.status, 401);
   assert.equal(noSession.text, "");
+  // A page load without a session gets the coming-soon page, whose button starts a sign-in at the door.
+  const comingSoon = await get("/docs/", { "sec-fetch-mode": "navigate", accept: "text/html" });
+  assert.equal(comingSoon.status, 401);
+  assert.match(comingSoon.text, /<h1>Consumer Site is coming soon\.<\/h1>/);
+  assert.match(comingSoon.text, /href="\/_door\/signin\?next=%2Fdocs%2F"/);
+  assert.match(comingSoon.headers["content-security-policy"], /^default-src 'none'/);
+  const signin = await get("/_door/signin?next=%2Fdocs%2F");
+  assert.equal(signin.status, 302);
+  assert.equal(new URL(signin.headers.location).searchParams.get("next"), "/docs/");
+  assert.match(signin.headers["set-cookie"]?.[0] ?? "", /^__Host-crv_door_state=/);
   const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
   const iat = Math.floor(Date.now() / 1000);
   const head = encode({ alg: "ES256", kid: "smoke" });

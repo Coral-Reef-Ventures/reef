@@ -1,6 +1,6 @@
 {
   "name": "@coralreefventures/contact",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "The contact-form Lambda handler behind a Coral Reef public site: validates a posted message, drops bots, and hands the message on.",
   "license": "MIT",
   "type": "module",

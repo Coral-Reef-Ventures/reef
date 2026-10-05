@@ -10,6 +10,7 @@ export {
 export { canonicalNext } from "./door/next.ts";
 export {
   type BundleDoorOptions,
+  type BundlePageOptions,
   bundleDoor,
   checkDeployment,
   type DeployManifest,
@@ -17,6 +18,14 @@ export {
   gateFiles,
   maxBundleBytes,
 } from "./door/package.ts";
+export {
+  type ComingSoon,
+  comingSoon,
+  type PageConfig,
+  type PageConfigFile,
+  type PageImage,
+  parsePageConfig,
+} from "./door/page.ts";
 export {
   createGate,
   type GateOptions,

@@ -20,6 +20,10 @@ describe("parseGateConfig", () => {
     expect([...config.keys.keys()]).toEqual(["k1"]);
   });
 
+  it("gives a configuration from before 0.4.0, with no page, the default coming-soon page", () => {
+    expect(parseGateConfig(valid).page).toEqual({ name: "Alpha", accent: "#1f2933", accentDark: "#d5dbe1" });
+  });
+
   it.each([
     ["no object", null],
     ["another version", { ...valid, version: 2 }],
@@ -35,6 +39,9 @@ describe("parseGateConfig", () => {
     ["a sign-out stop with a URL", { ...valid, signout: [{ id: "alpha", host: "https://evil.example/" }] }],
     ["no keys", { ...valid, jwks: { keys: [] } }],
     ["a P-384 key", { ...valid, jwks: jwksOf(makeKey("p", "P-384")) }],
+    ["a page that is not an object", { ...valid, page: "Alpha" }],
+    ["a page with a faint accent", { ...valid, page: { accent: "#fafafa" } }],
+    ["a page with a script for a mark", { ...valid, page: { mark: { type: "text/html", data: "PHNjcmlwdD4=" } } }],
   ])("refuses %s", (_name, value) => {
     expect(() => parseGateConfig(value)).toThrow();
   });

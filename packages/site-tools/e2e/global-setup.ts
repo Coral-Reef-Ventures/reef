@@ -42,6 +42,14 @@ const autoPost = (host: string, ticket: string, next: string) =>
       "<script>document.forms[0].submit()</script>",
   );
 
+/** Alpha's mark: a rounded tile with a white dot, drawn in its accent, so a test can see it painted. */
+export const markSvg =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Alpha">' +
+  '<rect width="128" height="128" rx="28" fill="#2A5A8C"/><circle cx="64" cy="64" r="22" fill="#FFFFFF"/></svg>';
+
+/** The coming-soon page's settings for alpha, through the bin's flags; beta takes the defaults. */
+export const alphaPage = { name: "Alpha Site", accent: "#2a5a8c", accentDark: "#a8c6e8" };
+
 /** A static export as Next writes one: pages, an RSC payload, a chunk the home page runs, an image, a 404 page. */
 const writeExport = async (out: string) => {
   const marker = "<!-- SITE-BYTES -->";
@@ -60,6 +68,8 @@ const writeExport = async (out: string) => {
     "og/home.png": Buffer.from(png, "base64"),
     "sitemap.xml": `<?xml version="1.0"?><!-- SITE-BYTES --><urlset><url><loc>https://example/</loc></url></urlset>`,
     "manifest.webmanifest": `{"name":"SITE-BYTES"}`,
+    // The product's mark, which alpha's coming-soon page carries inline (and is a file of the site like any other).
+    "brand/mark.svg": markSvg,
   };
   for (const [file, body] of Object.entries(files)) {
     await mkdir(path.dirname(path.join(out, file)), { recursive: true });
@@ -278,6 +288,18 @@ export default async function globalSetup() {
           `${doorOrigin}/.well-known/crv-door-jwks.json`,
           "--signout-chain",
           signout,
+          ...(site === "alpha"
+            ? [
+                "--name",
+                alphaPage.name,
+                "--mark",
+                "brand/mark.svg",
+                "--accent",
+                alphaPage.accent,
+                "--accent-dark",
+                alphaPage.accentDark,
+              ]
+            : []),
         ],
         { env: { ...process.env, NODE_EXTRA_CA_CERTS: path.join(work, "tls-cert.pem") } },
       );
