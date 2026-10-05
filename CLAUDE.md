@@ -61,11 +61,19 @@ packages/
                deliver function. (The brief guessed recipient, subject and origin as the parameters; the two
                handlers differed only in their field tables, and CORS lives on the function URL in each product's
                backend.ts, so those are not here.)
+tools/
+  sites/       `sites`, the launcher for every site on the family's port map (2026-10-05): sites (a bash shim, so a
+               symlink such as ~/.local/bin/sites finds it) runs sites.ts by type stripping; config.ts is the map, and
+               README.md shows it as a table a test holds to config.ts. Each run writes .dekit/dekit.yaml (gitignored,
+               absolute paths) and drives dekit's runner with -C. Family tooling, not a package: nothing publishes it,
+               and invariant 2 does not reach it, since it names the products' repositories by necessity.
 docs/
   conventions.md    the conventions Markset, Intentset and reef follow (2026-10-05); under 300 lines, a test holds it
 test/
   tooling.test.ts   the repository's shape: scope, version, pins, licence, release order and workflow, READMEs,
                     lockfile, no product scope in src
+  sites.test.ts     the launcher's map: unique ports in order, the README's table, the dekit.yaml it writes, and, where
+                    the sibling repositories are present (not in CI), that each command is one its repository defines
   consumer/         smoke.ts packs every package and installs them into an empty pnpm project; consumer-entry.tsx is
                     bundled there with esbuild (as a consumer's Next, tsx or Vitest would transpile the source) and
                     consumer.mjs checks every package and runs both bins
@@ -97,6 +105,16 @@ vitest.config.ts    one test runner for every package; playwright.config.ts is t
 - **No build step in development.** `site-tools` compiles to `dist/` on `prepack`, so `pnpm pack` and `pnpm publish`
   build it, and nothing else does. Its tests import `src/`.
 - Every dependency is pinned exactly and listed under Approved dependencies, with what it is for.
+- **`sites`** (`tools/sites/`, `pnpm sites` here, `~/.local/bin/sites` on Gary's machine) runs every site on the port
+  map, 3000 Atlas to 3006 driftline.app, under **dekit** (Homebrew's `mprocs` formula, renamed in 0.10), which is a
+  machine tool and not a dependency. It uses dekit's own runner mode rather than `dekit mprocs`: stop signals go to
+  each task's whole process group, a TCP ready check marks each port, every action has a command by task name, and the
+  sites outlive the terminal (`q` detaches, `Q` or `sites stop` stops them). Tried both on 2026-10-05; the README has
+  the reasons. A preflight skips a site, never kills anything: missing repository or install (it prints the `pnpm
+  install`), old Node, a port held by another process (reported with pid, command and directory), or a Next app whose
+  own `dev` script names another port. `SITES_ROOT` overrides where the repositories are (default: reef's parent,
+  worktrees included). The map changes in config.ts and the README table together; each repository's own default
+  port follows it.
 - `pnpm run e2e` (once: `pnpm exec playwright install chromium firefox webkit`) runs `packages/site-tools/e2e/` in
   Chromium, Firefox and WebKit. Global setup builds site-tools, runs the real `reef-door-bundle` twice into a
   temporary directory (fetching the JWKS over https from a stand-in door, trusted through `NODE_EXTRA_CA_CERTS`),
@@ -245,6 +263,10 @@ All pinned exactly, all MIT, Apache-2.0, BSD or ISC. The first group came with t
       any GET, so another site's `<img>` could overwrite a visitor's state mid-sign-in; it now answers only a top-level
       navigation (`isTopLevelNavigation`: a document request whose `Sec-Fetch-Dest`, when sent, is `document`). Released
       from CI on the `v0.4.0` tag after merge.
+- [x] `sites`, the launcher, 2026-10-05: one dekit TUI for the seven sites on Gary's port map of that
+      day (3000 Atlas, 3001 Streamlane, 3002 the CRV app, 3003 markset.org, 3004 intentset.org, 3005
+      streamlane.app, 3006 driftline.app), with a preflight, `status`, `restart <name>` and `stop`. Family tooling in
+      `tools/sites/`, not a package and not released.
 - [ ] Streamlane and Driftline consume the four packages; their copies go.
 - [ ] Candidates the report also pointed at and this version leaves in the products: the Playwright specs
       (`pages.spec.ts`, `mobile.spec.ts`), `playwright.config.ts`, `PricingMeter` and the two forms. The meter and the

@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# `sites`: start every Coral Reef site and watch, stop and restart each from one terminal UI. The command is sites.ts,
+# run by Node's type stripping like the rest of reef; this shim finds it through any symlink (~/.local/bin/sites)
+# and checks that the Node on PATH can strip types before handing over. `sites --help` says the rest.
+set -euo pipefail
+
+source=${BASH_SOURCE[0]}
+while [ -L "$source" ]; do
+  dir=$(cd -P "$(dirname "$source")" && pwd)
+  source=$(readlink "$source")
+  [[ $source == /* ]] || source=$dir/$source
+done
+dir=$(cd -P "$(dirname "$source")" && pwd)
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "sites: node is not on PATH; the sites need Node 24 (reef's .nvmrc)" >&2
+  exit 1
+fi
+if ! node -e 'const [a, b] = process.versions.node.split(".").map(Number); process.exit(a > 22 || (a === 22 && b >= 18) ? 0 : 1)'; then
+  echo "sites: Node $(node --version) cannot run TypeScript; the sites need Node 24 (reef's .nvmrc)" >&2
+  exit 1
+fi
+exec node --disable-warning=ExperimentalWarning "$dir/sites.ts" "$@"

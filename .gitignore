@@ -8,3 +8,6 @@ packages/*/dist/
 lighthouse/
 test-results/
 playwright-report/
+
+# The sites launcher writes its dekit.yaml here on each run, with this machine's paths.
+tools/sites/.dekit/
