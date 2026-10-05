@@ -40,8 +40,14 @@ packages/
                them to one SiteConfig. `/testing` is clientReach, the server-only walk. `/base.css` is the shared
                global rules and layout tokens; a site's globals.css keeps the colors. Ships .tsx and .module.css as
                source: consumers add it to Next's transpilePackages.
-  site-tools/  reef-serve and reef-lighthouse, bins. The one package with a build (tsc on prepack), because Node
-               refuses to strip types from a file under node_modules, and a bin is run by Node.
+  site-tools/  reef-serve, reef-lighthouse and reef-door-bundle, bins. The one package with a build (tsc on prepack),
+               because Node refuses to strip types from a file under node_modules, and a bin is run by Node.
+               src/door/ is the gate that locks a site behind coralreefventures.com's door (0.2.0): verify.ts (ES256
+               JWS against a JWKS), next.ts (canonicalNext), config.ts (gate.config.json), server.ts (the gate's
+               request order) and package.ts (bundleDoor, which writes .amplify-hosting with one route, /* to
+               Compute). The gate imports Node's modules and its own files only, because the compute bundle carries
+               no node_modules: bundleDoor copies those compiled files (gateFiles, held against the imports by a
+               test) beside a server.mjs entry. e2e/ runs it in three browsers (below).
   theme/       createBrandTheme(tokens, config) and themeCss(theme, { generatedBy, resolver }). A product's
                packages/theme is its tokens file plus a call. test/fixtures/ holds both products' tokens files and
                committed theme.css, copied 2026-10-04 and named by origin, and the test regenerates each byte for
@@ -80,7 +86,18 @@ test/
   `esbuild` 0.28.2 at the root (esbuild only for the smoke test's bundle); `react`, `react-dom`, `@types/react*` 19.3.0,
   `next` 16.3.6 and `@mantine/core`/`hooks` 9.6.3 as the packages' dev and peer dependencies, the versions both sites
   use; `@types/aws-lambda` 8.10.163 as `contact`'s one dependency, since its signature is typed with it.
-  `@playwright/test` is an optional peer of `site-tools`, resolved at run time for Chromium's path, never installed here.
+  `@playwright/test` 1.63.0 is an optional peer of `site-tools`, resolved at run time for Chromium's path, and since
+  0.2.0 a root dev dependency too, for the door gate's browser suite (Apache-2.0; the door plan names it).
+- `pnpm run e2e` (once: `pnpm exec playwright install chromium firefox webkit`) runs `packages/site-tools/e2e/` in
+  Chromium, Firefox and WebKit. Global setup builds site-tools, runs the real `reef-door-bundle` twice into a
+  temporary directory (fetching the JWKS over https from a stand-in door, trusted through `NODE_EXTRA_CA_CERTS`),
+  starts each bundle's `server.mjs` there with no node_modules above it, and puts TLS in front of each, as Amplify's
+  CDN does. The two gates are `localhost` and `127.0.0.1` and the door is `127.0.0.1` on another port: the two names
+  are different sites to a browser, so the door's POST is cross-site, and cookies ignore ports, so two gates need two
+  names. The certificate is made with `openssl` per run. Firefox reports an empty response to a navigation as a
+  network error, so a test of an empty 400 or 403 asserts the status through `page.request` and only that a
+  navigation went nowhere else. Global setup must not block its event loop while the bin runs (`execFile`, not
+  `execFileSync`): the door answering the bin's JWKS fetch is in the same process.
 - Vitest's `css.modules.classNameStrategy: "non-scoped"` keeps a CSS module's class names as written, so a rendering
   test reads `class="section"` off the markup. React 19 puts a `<link rel="preload">` before an eager, high-priority
   `<img>`; a test that pins the Screenshot's markup expects it.
@@ -154,6 +171,10 @@ Registry reads lag publication by minutes: the workflow log printing `+ name@ver
 - [x] 0.1.1, 2026-10-04: the contact handler infers its fields from `fields` alone (Driftline met the inference bug),
       `reef-lighthouse` serves on a free port unless `--port` pins one (Streamlane met EADDRINUSE on 3160), and the
       release-age note for consumers. The first release through `release.yml` and trusted publishing.
+- [ ] 0.2.0, the door gate in `site-tools` (`reef-door-bundle`, `src/door/`), 2026-10-04: unit tests for every
+      step of the gate's request order, the bundle's shape and the canonical-next cases; the browser suite in three
+      browsers; the smoke test runs the packed bin and starts the bundle it writes away from any node_modules. Released
+      from CI on the `v0.2.0` tag after merge: `site-tools` already has its trusted publisher, so no hand publish.
 - [ ] Streamlane and Driftline consume the four packages; their copies go.
 - [ ] Candidates the report also pointed at and this version leaves in the products: the Playwright specs
       (`pages.spec.ts`, `mobile.spec.ts`), `playwright.config.ts`, `PricingMeter` and the two forms. The meter and the

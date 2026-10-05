@@ -7,3 +7,4 @@ packages/*/dist/
 # Written by the site-tools tests and by a consumer's Lighthouse run.
 lighthouse/
 test-results/
+playwright-report/

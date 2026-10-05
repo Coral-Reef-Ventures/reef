@@ -19,6 +19,10 @@ jobs:
       - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm test
+      # The door gate in three browsers: what is pinned there (the state cookie on the door's cross-site POST, the
+      # session kept from its response) is decided by each browser, not by the gate.
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - run: pnpm run e2e
       # Installs the packed packages into an empty project and uses every entry point, which is the one place a
       # package meets the dependencies a consumer's install resolves for it.
       - run: pnpm run smoke:packed

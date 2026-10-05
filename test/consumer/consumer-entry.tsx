@@ -7,7 +7,7 @@
 import { createContactHandler } from "@coralreefventures/contact";
 import { createSite, page, Section, Status } from "@coralreefventures/site";
 import { clientPackages } from "@coralreefventures/site/testing";
-import { createStaticServer, pagesFromSitemap, serve } from "@coralreefventures/site-tools";
+import { canonicalNext, createStaticServer, pagesFromSitemap, serve } from "@coralreefventures/site-tools";
 import { createBrandTheme, themeCss } from "@coralreefventures/theme";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -31,7 +31,7 @@ export const contact = createContactHandler({
 });
 
 // site-tools
-export { createStaticServer, pagesFromSitemap, serve };
+export { canonicalNext, createStaticServer, pagesFromSitemap, serve };
 
 // site
 const site = createSite({

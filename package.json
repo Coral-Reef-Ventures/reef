@@ -1,7 +1,7 @@
 {
   "name": "reef",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.2.0",
   "type": "module",
   "description": "Shared packages for the Coral Reef family: the public-site shell, its tools, the Mantine theme builder, and the contact-form handler.",
   "packageManager": "pnpm@11.24.0",
@@ -16,10 +16,12 @@
     "lint": "biome check .",
     "format": "biome check --write .",
     "smoke:packed": "node test/consumer/smoke.ts --packed",
-    "smoke:registry": "node test/consumer/smoke.ts --registry"
+    "smoke:registry": "node test/consumer/smoke.ts --registry",
+    "e2e": "playwright test"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
+    "@playwright/test": "1.63.0",
     "@types/node": "24.19.0",
     "esbuild": "0.28.2",
     "typescript": "5.9.3",
