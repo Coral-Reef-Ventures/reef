@@ -35,6 +35,8 @@ export const site = createSite({
     { label: "Sign in", href: "https://app.streamlane.app", kind: "link", hideBelow: "md" },
     { label: "Start free", href: "/pricing/", kind: "primary" },
   ],
+  // Optional: something in the bar that is not a link, such as a color-scheme control.
+  headerTools: <SchemeControl />,
   footer: {
     maker: <>Streamlane · made by <a href="https://coralreefventures.com/">Coral Reef Ventures</a> · source on <a href="...">GitHub</a></>,
     links: [{ label: "Docs", href: "/docs/" }, { label: "Changelog", href: "/changelog/" } /* ... */],
@@ -64,6 +66,12 @@ const PricingPage = () => (
   </SiteFrame>
 );
 ```
+
+`headerTools` (optional, since 0.3.0) is for something in the header that is not a link, such as a color-scheme
+control. It renders in the actions group after the actions and before the folded menu's button, vertically centered in
+the 64 px bar, at every width: never hidden below a breakpoint and never copied into the folded menu. The header stays a
+server component; the element is the product's own, and may be one of its client components. Without it, the header's
+markup is what it was before the field existed, and a test holds that.
 
 `active` is typed to the config's nav keys. The root layout takes `site.rootMetadata()` and `site.rootViewport()`;
 `app/robots.ts` returns `site.robots()`, `app/sitemap.ts` returns `site.sitemap()` (with the docs pages added, for a

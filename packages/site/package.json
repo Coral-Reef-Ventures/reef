@@ -1,6 +1,6 @@
 {
   "name": "@coralreefventures/site",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "The shell a Coral Reef public site is built in: header, footer, sections, the social-card builder and the metadata helpers, as server components, parametrized by one SiteConfig.",
   "license": "MIT",
   "type": "module",

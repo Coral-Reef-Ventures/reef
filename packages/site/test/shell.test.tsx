@@ -43,6 +43,30 @@ describe("SiteHeader", () => {
     const driftline = render(<SiteHeader site={driftlineLike} />);
     expect(driftline.slice(driftline.indexOf("<details"))).toContain(">Request early access</a>");
   });
+
+  it("puts the header tools after the actions and before the menu button, in the bar and never in the menu", () => {
+    const tools = (
+      <fieldset className="scheme">
+        <legend>Color scheme</legend>
+      </fieldset>
+    );
+    const html = render(<SiteHeader site={{ ...streamlaneLike, headerTools: tools }} />);
+    const slot = '<div class="tools"><fieldset class="scheme"><legend>Color scheme</legend></fieldset></div>';
+    expect(html).toContain(slot);
+    const actions = html.slice(html.indexOf('<div class="actions">'));
+    expect(actions.indexOf(">Start free</a>")).toBeLessThan(actions.indexOf(slot));
+    expect(actions.indexOf(slot)).toBeLessThan(actions.indexOf("<details"));
+    expect(html.slice(html.indexOf("<details"))).not.toContain("Color scheme");
+    expect(html.match(/Color scheme/g)).toHaveLength(1);
+  });
+
+  it("renders exactly as before when a site has no header tools", () => {
+    // The markup 0.2.0 rendered for this fixture, before the slot existed.
+    const before =
+      '<header class="header"><div class="inner"><a href="/" class="home"><span role="img" aria-label="Driftline">Driftline</span></a><nav aria-label="Main" class="nav"><a href="/product/" class="link">Product</a><a href="/pricing/" class="link">Pricing</a></nav><div class="actions"><a href="/early-access/" class="primary" data-hide-below="sm">Request early access</a><details class="menu"><summary class="menuButton" aria-label="Menu"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg></summary><nav aria-label="Main" class="menuPanel"><a href="/product/" class="link">Product</a><a href="/pricing/" class="link">Pricing</a><a href="/early-access/" class="link">Request early access</a></nav></details></div></div></header>';
+    expect(render(<SiteHeader site={driftlineLike} />)).toBe(before);
+    expect(render(<SiteHeader site={{ ...driftlineLike, headerTools: null }} />)).toBe(before);
+  });
 });
 
 describe("SiteFooter", () => {

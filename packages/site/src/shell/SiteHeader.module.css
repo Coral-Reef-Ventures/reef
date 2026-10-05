@@ -82,6 +82,13 @@
   }
 }
 
+/* The site's header tools (a color-scheme control, say): in the bar at every width, centered on its line. */
+.tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+
 /* An action that leaves the bar on narrow screens; the folded menu lists it instead. */
 @media (max-width: 62em) {
   .actions [data-hide-below="md"] {
