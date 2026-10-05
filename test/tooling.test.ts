@@ -167,6 +167,89 @@ describe("the toolchain", () => {
   });
 });
 
+describe("the READMEs", () => {
+  // npm shows a package's README as its page, so the page an adopter lands on first names what they installed.
+  it("open each package's README with the package's name", async () => {
+    for (const dir of await packageDirs()) {
+      const readme = await readFile(join(root, "packages", dir, "README.md"), "utf8").catch(() => "");
+      expect(readme, `packages/${dir}/README.md`).toMatch(new RegExp(`^# @coralreefventures/${dir}$`, "m"));
+    }
+  });
+
+  // A README that says "four packages" and lists three is stale the day a fifth ships; Markset's said seven and named six.
+  it("name every published package in the root README's Status, with the count and the version", async () => {
+    const rootPkg = await read("package.json");
+    const readme = await readFile(join(root, "README.md"), "utf8");
+    const status = /^## Status\n\n([\s\S]*?)\n## /m.exec(readme)?.[1] ?? "";
+    expect(status, "the README has a Status section").not.toBe("");
+    expect(status).toContain(`\`${rootPkg.version}\``);
+    const sentence = /(\w+) packages are published under the `@coralreefventures`\s+scope: ([^.]*)\./.exec(status);
+    expect(sentence, "the Status sentence that lists the published packages").not.toBeNull();
+    const words: Record<string, number> = { three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8 };
+    const dirs = await packageDirs();
+    expect(words[sentence?.[1]?.toLowerCase() ?? ""], `the count says ${sentence?.[1]}`).toBe(dirs.length);
+    for (const dir of dirs) {
+      expect(sentence?.[2], `the README does not name ${dir}`).toContain(`\`${dir}\``);
+    }
+  });
+});
+
+describe("the release", () => {
+  const workflow = () => readFile(join(root, ".github", "workflows", "release.yml"), "utf8");
+
+  // A tag can be pushed from anywhere, so the release re-proves the gate rather than trusting that CI ran on the commit.
+  it("proves the build before it publishes, and the registry's copy after", async () => {
+    const yaml = await workflow();
+    expect(yaml).toMatch(/tags: \["v\[0-9\]\*"\]/);
+    expect(yaml).toMatch(/id-token: write/);
+    expect(yaml).toMatch(/--provenance/);
+    for (const step of [
+      "pnpm install --frozen-lockfile",
+      "pnpm run lint",
+      "pnpm run typecheck",
+      "pnpm test",
+      "pnpm run e2e",
+      "pnpm run smoke:packed",
+    ]) {
+      expect(yaml.indexOf(step), `the release runs ${step} before it publishes`).toBeGreaterThan(-1);
+      expect(yaml.indexOf(step)).toBeLessThan(yaml.indexOf(" publish --provenance"));
+    }
+    expect(yaml).toMatch(/does not match package version/);
+    // Only on a tag: on a manual run GITHUB_REF_NAME is the branch, which can never equal a version.
+    expect(yaml).toMatch(/if: startsWith\(github\.ref, 'refs\/tags\/'\)/);
+    expect(yaml.indexOf("pnpm run smoke:registry")).toBeGreaterThan(yaml.indexOf(" publish --provenance"));
+    // pnpm run hands a "--" to the script rather than swallowing it, so the registry check would ask for version "--".
+    expect(yaml).not.toMatch(/pnpm run [\w:-]+ --\s/);
+  });
+
+  // The registry answers a second publish of a version with a 403, which would fail the step and strand every package
+  // after it; a re-pushed tag or a re-run after a partial publish has to skip what is out and carry on.
+  it("can be run a second time without failing", async () => {
+    const yaml = await workflow();
+    expect(yaml).toMatch(/curl -sf -o \/dev\/null "https:\/\/registry\.npmjs\.org/);
+    // Over plain HTTPS: a client's view fails on a bad credential, which would read as "not published".
+    expect(yaml).not.toMatch(/(npm|pnpm) view/);
+    expect(yaml).not.toMatch(/pnpm run release/);
+    // One list: the workflow walks the release script's, which the first test here holds in dependency order.
+    expect(yaml).toMatch(/scripts\.release\.match/);
+    // Trusted publishing over OIDC: an .npmrc with an empty _authToken would be tried, refused, and stop it there.
+    expect(yaml).not.toMatch(/NODE_AUTH_TOKEN/);
+    expect(yaml).not.toMatch(/registry-url/);
+  });
+
+  // A private registry in one contributor's ~/.npmrc is written into the lockfile as the tarball URL for what it
+  // served, and a frozen install elsewhere then fails with a 401 for a package nobody added. pnpm records a registry
+  // package by integrity alone and writes a tarball URL only for one from somewhere else, so any such URL is foreign.
+  it("installs every dependency from the public registry", async () => {
+    const lock = await readFile(join(root, "pnpm-lock.yaml"), "utf8");
+    const foreign = [...lock.matchAll(/tarball: (\S+)/g)]
+      .map((match) => match[1])
+      .filter((url) => !url?.startsWith("https://registry.npmjs.org/"));
+    expect(foreign).toEqual([]);
+    expect(await readFile(join(root, "package-lock.json"), "utf8").catch(() => "")).toBe("");
+  });
+});
+
 describe("the family conventions", () => {
   // Every agent session in three repositories may read docs/conventions.md, and a conventions file that grows without
   // bound becomes the done-log it was written to replace.
