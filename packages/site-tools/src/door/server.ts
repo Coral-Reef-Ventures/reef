@@ -16,6 +16,13 @@ export const sessionCookie = "__Host-crv_door";
 /** The nonce the gate sets before it sends a visitor to the door, which the ticket must name as `st`. */
 export const stateCookie = "__Host-crv_door_state";
 export const stateLifetimeSeconds = 600;
+/**
+ * A marker that this browser has held a session here, so that once the hour is up a page load bounces silently through
+ * the door (which issues a fresh ticket while its own sign-in lives) instead of meeting the coming-soon page. It holds
+ * no identity and opens nothing: without a valid session it changes only which way a page load is sent to sign in.
+ */
+export const seenCookie = "__Host-crv_door_seen";
+export const seenLifetimeSeconds = 30 * 24 * 60 * 60;
 
 const maxBodyBytes = 16 * 1024;
 const encodedUnsafe = /%(5c|[01][0-9a-f]|7f)/i;
@@ -33,6 +40,8 @@ const cookie = (name: string, value: string, maxAge: number, sameSite: "Lax" | "
   `${name}=${value}; Max-Age=${maxAge}; Path=/; Secure; HttpOnly; SameSite=${sameSite}`;
 const clearSession = cookie(sessionCookie, "", 0, "Lax");
 const clearState = cookie(stateCookie, "", 0, "None");
+const markSeen = cookie(seenCookie, "1", seenLifetimeSeconds, "Lax");
+const clearSeen = cookie(seenCookie, "", 0, "Lax");
 
 /** One value of a cookie, or undefined when it is absent or sent twice (which a `__Host-` cookie never is). */
 export const readCookie = (header: string | undefined, name: string): string | undefined => {
@@ -93,6 +102,16 @@ export const isDocumentRequest = (request: IncomingMessage): boolean => {
 };
 
 /**
+ * A page load in the window itself: a document request whose `Sec-Fetch-Dest`, when sent, is `document`. Only this
+ * may start a sign-in, so an image, a frame or a fetch from another site cannot overwrite a visitor's state cookie.
+ */
+export const isTopLevelNavigation = (request: IncomingMessage): boolean => {
+  if (!isDocumentRequest(request)) return false;
+  const dest = request.headers["sec-fetch-dest"];
+  return dest === undefined || dest === "document";
+};
+
+/**
  * The form body, or null once it passes 16 KB. The rest of an oversized body is read and thrown away rather than the
  * socket destroyed, so the visitor still gets the redirect back to the door; that response closes the connection.
  */
@@ -134,9 +153,10 @@ export type GateOptions = {
  * The gate: every request to a locked site, in this order. (1) A path with a backslash, a control character or a dot
  * segment, raw or encoded, is a 400; a method other than GET, HEAD or POST is a 405. (2) A host not on the list is a
  * 403. (3) robots.txt disallows everything, and /_door/health answers ok. (4) POST /_door verifies a ticket from the
- * door and sets the session; /_door/signin starts a sign-in at the door. (5) /_door/signout clears both cookies and walks
+ * door and sets the session; /_door/signin starts a sign-in at the door. (5) /_door/signout clears the door's cookies and walks
  * a fixed map. (6) A request with a valid session is served from the export. (7) Without one, a page load gets the
- * coming-soon page, a 401 whose sign-in link carries the canonical next, and anything else gets an empty 401. (8) An
+ * coming-soon page, a 401 whose sign-in link carries the canonical next (or, from a browser that has had a session
+ * here, a silent bounce through the door), and anything else gets an empty 401. (8) An
  * exception is a 500 with nothing in it: the gate fails closed.
  */
 export const createGate = ({
@@ -203,17 +223,28 @@ export const createGate = ({
     const claimNext = canonicalNext(verdict.claims.next, host);
     if (formNext === null || claimNext === null || formNext !== claimNext) return toDoorWithError(response);
     const maxAge = verdict.claims.exp - now();
-    return redirect(response, 303, claimNext, [cookie(sessionCookie, ticket ?? "", maxAge, "Lax"), clearState]);
+    return redirect(response, 303, claimNext, [
+      cookie(sessionCookie, ticket ?? "", maxAge, "Lax"),
+      clearState,
+      markSeen,
+    ]);
   };
 
   /**
    * Step 4's sign-in start, which the coming-soon page's button links to: a fresh state cookie and a 302 to the door,
    * naming this site, this host and where to come back to. `next` is taken from the query only after *Canonical next*;
-   * one that fails, or is missing or sent twice, becomes `/`.
+   * one that fails, or is missing or sent twice, becomes `/`. Only a top-level navigation starts one; anything else
+   * gets an empty 401 and no cookie.
    */
-  const startSignin = (response: ServerResponse, rawQuery: string, host: string) => {
+  const startSignin = (request: IncomingMessage, response: ServerResponse, rawQuery: string, host: string) => {
+    if (!isTopLevelNavigation(request)) return empty(response, 401, { "WWW-Authenticate": unauthorized });
     const asked = new URLSearchParams(rawQuery).getAll("next");
     const next = (asked.length === 1 ? canonicalNext(asked[0], host) : null) ?? "/";
+    return toDoor(response, next, host);
+  };
+
+  /** A fresh state cookie and a 302 to the door, for an already canonical `next`. */
+  const toDoor = (response: ServerResponse, next: string, host: string) => {
     const nonce = randomBytes(32).toString("base64url");
     const query = new URLSearchParams({ site: config.site, host, next, state: nonce });
     return redirect(response, 302, `${config.door}/?${query}`, [
@@ -225,11 +256,16 @@ export const createGate = ({
    * Step 7: no session. A page load gets the coming-soon page, which is the gate's own and holds none of the site;
    * its sign-in link carries the raw request target after *Canonical next*, or `/`. Anything else is a bare 401.
    * Both are 401, so a request without a session never gets a 2xx with anything of the site's in it, and a probe can
-   * tell locked from open by the status alone.
+   * tell locked from open by the status alone. A page load from a browser that has held a session here (the seen
+   * cookie) is sent straight to the door instead, which renews the session silently while the door's sign-in lives.
    */
   const refuse = (request: IncomingMessage, response: ServerResponse, target: string, host: string) => {
     if (!isDocumentRequest(request)) return empty(response, 401, { "WWW-Authenticate": unauthorized });
-    const body = page.html(canonicalNext(target, host) ?? "/");
+    const next = canonicalNext(target, host) ?? "/";
+    if (readCookie(request.headers.cookie, seenCookie) === "1" && isTopLevelNavigation(request)) {
+      return toDoor(response, next, host);
+    }
+    const body = page.html(next);
     response.writeHead(401, {
       ...securityHeaders,
       "Cache-Control": "no-store",
@@ -276,10 +312,10 @@ export const createGate = ({
   ) => {
     if (path === "/robots.txt") return text(response, request, "User-agent: *\nDisallow: /\n");
     if (path === "/_door/health") return text(response, request, "ok");
-    if (path === "/_door/signin") return startSignin(response, rawQuery, host);
+    if (path === "/_door/signin") return startSignin(request, response, rawQuery, host);
     if (path === "/_door/signout") {
       const then = new URLSearchParams(rawQuery).get("then");
-      return redirect(response, 303, signoutTarget(then), [clearSession, clearState]);
+      return redirect(response, 303, signoutTarget(then), [clearSession, clearState, clearSeen]);
     }
     return empty(response, 404);
   };

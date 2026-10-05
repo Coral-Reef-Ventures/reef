@@ -55,17 +55,24 @@ listening on port 3000. For every request, in order:
 4. `POST /_door` takes the door's ticket from a form body: an ES256 JWS whose `kid` is in the JWKS, issued by the door
    for this exact host, unexpired and living at most an hour, bound to the `__Host-crv_door_state` cookie, and naming
    the same canonical `next` as the form. It becomes the `__Host-crv_door` cookie (`HttpOnly; Secure; SameSite=Lax`,
-   for the ticket's remaining life) and a 303 to `next`. Anything wrong is a 303 back to the door with `?error=ticket`.
+   for the ticket's remaining life) and a 303 to `next`, and sets `__Host-crv_door_seen=1` (`HttpOnly; Secure;
+   SameSite=Lax`, 30 days), a marker with no identity in it that this browser has had a session here. Anything wrong is a 303 back to the door with `?error=ticket`.
    `GET /_door/signin?next=<path>` starts a sign-in: it runs `next` through Canonical next (a missing, repeated or
    refused one becomes `/`), sets a fresh 32-byte `__Host-crv_door_state` cookie (`SameSite=None`, ten minutes) and
-   answers a 302 to the door with `site`, `host`, `next` and `state`. The coming-soon page's button links here.
-5. `/_door/signout?then=<id>` clears both cookies and goes on by a fixed map: to the gate of the site `<id>` in
+   answers a 302 to the door with `site`, `host`, `next` and `state`. The coming-soon page's button links here. Only a
+   top-level navigation starts one (a navigation, or a request without `Sec-Fetch-*` headers that accepts HTML, and
+   `Sec-Fetch-Dest: document` when sent); an image, a frame or a fetch gets an empty 401 and no cookie, so another
+   site cannot overwrite a visitor's state mid-sign-in.
+5. `/_door/signout?then=<id>` clears all three cookies and goes on by a fixed map: to the gate of the site `<id>` in
    `--signout-chain`, naming the site after it, or, for anything else (`door`, the last stop), to the door's
    `/signout/`. It never redirects to a URL from the query.
 6. With a valid session the export is served as Amplify maps it, HTML and `.txt` as `private, no-store` and
    `/_next/static/**` as `private, max-age=31536000, immutable`.
 7. Without one, a page load (a navigation, or a request without `Sec-Fetch-*` headers that accepts HTML) gets the
-   coming-soon page, below, as a 401; anything else gets an empty 401. Neither sets a cookie. Both carry
+   coming-soon page, below, as a 401; anything else gets an empty 401. Neither sets a cookie. The exception is a
+   top-level page load carrying the seen marker: an invitee whose hour is up is sent straight to the door (a fresh
+   state cookie and the 302 `/_door/signin` gives), which issues a new ticket at once while its own sign-in lives, so
+   renewal stays silent. The marker opens nothing; a fetch carrying it still gets the empty 401. Both 401s carry
    `WWW-Authenticate: Cookie realm="<id>", form-action="/_door/signin", cookie-name="__Host-crv_door"`.
 8. An exception is an empty 500. The gate fails closed.
 

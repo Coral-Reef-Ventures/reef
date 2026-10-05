@@ -14,6 +14,7 @@ import {
   isDocumentRequest,
   normalizePath,
   readCookie,
+  seenCookie,
   sessionCookie,
   stateCookie,
 } from "../src/door/server.ts";
@@ -194,6 +195,7 @@ describe("the gate, step by step", () => {
     expect(setCookies(reply)).toEqual([
       `${sessionCookie}=${jws}; Max-Age=3600; Path=/; Secure; HttpOnly; SameSite=Lax`,
       `${stateCookie}=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=None`,
+      `${seenCookie}=1; Max-Age=2592000; Path=/; Secure; HttpOnly; SameSite=Lax`,
     ]);
     expect(reply.headers["cache-control"]).toBe("no-store");
   });
@@ -242,13 +244,14 @@ describe("the gate, step by step", () => {
     expect((await send("GET", `/_door?ticket=${ticket()}`, navigate)).status).toBe(405);
   });
 
-  it("(5) clears both cookies and walks a fixed map, never a URL from the query", async () => {
+  it("(5) clears the door's three cookies and walks a fixed map, never a URL from the query", async () => {
     const walk = async (query: string) => {
       const reply = await send("GET", `/_door/signout${query}`, withSession());
       expect(reply.status).toBe(303);
       expect(setCookies(reply)).toEqual([
         `${sessionCookie}=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Lax`,
         `${stateCookie}=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=None`,
+        `${seenCookie}=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Lax`,
       ]);
       return reply.headers.location;
     };
@@ -437,6 +440,62 @@ describe("the gate, step by step", () => {
     expect(elsewhere.status).toBe(403);
     expect(elsewhere.headers["set-cookie"]).toBeUndefined();
     expect((await send("HEAD", "/_door/signin?next=%2F", navigate)).status).toBe(302);
+  });
+
+  it("(4) starts a sign-in only from a top-level navigation: a subresource or a frame sets no cookie", async () => {
+    const cases: Record<string, string>[] = [
+      { "sec-fetch-mode": "no-cors", "sec-fetch-dest": "image", accept: "image/*" },
+      { "sec-fetch-mode": "cors", accept: "*/*" },
+      { "sec-fetch-mode": "navigate", "sec-fetch-dest": "iframe", accept: "text/html" },
+      { accept: "*/*" },
+    ];
+    for (const headers of cases) {
+      const reply = await send("GET", "/_door/signin?next=%2F", headers);
+      expect(reply.status, JSON.stringify(headers)).toBe(401);
+      expect(reply.body).toBe("");
+      expect(reply.headers["set-cookie"], JSON.stringify(headers)).toBeUndefined();
+      expect(reply.headers.location).toBeUndefined();
+      expect(reply.headers["cache-control"]).toBe("no-store");
+    }
+    const top = await send("GET", "/_door/signin?next=%2F", { ...navigate, "sec-fetch-dest": "document" });
+    expect(top.status).toBe(302);
+  });
+
+  const seen = { cookie: `${seenCookie}=1` };
+  it("(7) bounces a page load from a browser that has had a session here silently through the door", async () => {
+    const reply = await send("GET", "/docs/?tab=api", { ...navigate, ...seen });
+    expect(reply.status).toBe(302);
+    expect(reply.body).toBe("");
+    expect(reply.headers["cache-control"]).toBe("no-store");
+    const location = new URL(reply.headers.location ?? "");
+    expect(location.origin).toBe(door);
+    expect(location.searchParams.get("next")).toBe("/docs/?tab=api");
+    expect(location.searchParams.get("site")).toBe("alpha");
+    const [stateSet] = setCookies(reply);
+    expect(stateSet).toMatch(/^__Host-crv_door_state=[A-Za-z0-9_-]{43}; Max-Age=600;/);
+    expect(location.searchParams.get("state")).toBe(/=([^;]*);/.exec(stateSet ?? "")?.[1]);
+    const expired = await send("GET", "/", {
+      ...navigate,
+      cookie: `${seenCookie}=1; ${sessionCookie}=${session({ iat: now - 3600, exp: now })}`,
+    });
+    expect(expired.status).toBe(302);
+  });
+
+  it("(7) serves none of the site for the seen cookie alone", async () => {
+    for (const target of ["/docs/", "/index.txt", "/_next/static/chunks/app.js", "/og/home.png", "/nope/"]) {
+      const fetched = await send("GET", target, { accept: "*/*", "sec-fetch-mode": "cors", ...seen });
+      expect(fetched.status, target).toBe(401);
+      expect(fetched.body, target).toBe("");
+      const loaded = await send("GET", target, { ...navigate, ...seen });
+      expect(loaded.status, target).toBe(302);
+      expect(loaded.body, target).toBe("");
+    }
+    const framed = await send("GET", "/docs/", { ...navigate, "sec-fetch-dest": "iframe", ...seen });
+    expect(framed.status).toBe(401);
+    expect(framed.headers["set-cookie"]).toBeUndefined();
+    expect(framed.body).toContain("Alpha is coming soon.");
+    const other = await send("GET", "/docs/", { ...navigate, cookie: `${seenCookie}=x` });
+    expect(other.status).toBe(401);
   });
 
   it("(7) answers anything that is not a page load with an empty 401", async () => {

@@ -30,6 +30,7 @@ export {
   createGate,
   type GateOptions,
   type StartGateOptions,
+  seenCookie,
   sessionCookie,
   startGate,
   stateCookie,

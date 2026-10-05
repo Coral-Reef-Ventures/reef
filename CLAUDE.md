@@ -237,7 +237,13 @@ All pinned exactly, all MIT, Apache-2.0, BSD or ISC. The first group came with t
       or a monitor, and a 503 would read as an outage. Its name, marks and colors are `reef-door-bundle` flags
       (`--name`, `--mark`, `--mark-dark`, `--accent`, `--accent-dark`) stored as `gate.config.json`'s `page`, checked at
       bundle time (an accent under 3:1 on the page is refused), with defaults that still render a correct page.
-      Lockstep: every package moves to 0.4.0. **Not merged until the security review.**
+      Lockstep: every package moves to 0.4.0. **The security review** found the session's end now met the
+      coming-soon page rather than the silent bounce the door plan promises (the browser drops the cookie at its
+      Max-Age, so the gate cannot tell a lapsed invitee from a stranger): a ticket now also sets
+      `__Host-crv_door_seen=1` (30 days, no identity), sign-out clears it, and a top-level page load carrying it goes
+      straight to the door instead of the page. It also found `/_door/signin` set the `SameSite=None` state cookie for
+      any GET, so another site's `<img>` could overwrite a visitor's state mid-sign-in; it now answers only a top-level
+      navigation (`isTopLevelNavigation`: a document request whose `Sec-Fetch-Dest`, when sent, is `document`).
 - [ ] Streamlane and Driftline consume the four packages; their copies go.
 - [ ] Candidates the report also pointed at and this version leaves in the products: the Playwright specs
       (`pages.spec.ts`, `mobile.spec.ts`), `playwright.config.ts`, `PricingMeter` and the two forms. The meter and the

@@ -116,7 +116,14 @@ try {
   assert.match(comingSoon.text, /<h1>Consumer Site is coming soon\.<\/h1>/);
   assert.match(comingSoon.text, /href="\/_door\/signin\?next=%2Fdocs%2F"/);
   assert.match(comingSoon.headers["content-security-policy"], /^default-src 'none'/);
-  const signin = await get("/_door/signin?next=%2Fdocs%2F");
+  // Only a page load starts a sign-in; anything else sets no state cookie.
+  const fetched = await get("/_door/signin?next=%2Fdocs%2F", {
+    "sec-fetch-mode": "no-cors",
+    "sec-fetch-dest": "image",
+  });
+  assert.equal(fetched.status, 401);
+  assert.equal(fetched.headers["set-cookie"], undefined);
+  const signin = await get("/_door/signin?next=%2Fdocs%2F", { "sec-fetch-mode": "navigate", accept: "text/html" });
   assert.equal(signin.status, 302);
   assert.equal(new URL(signin.headers.location).searchParams.get("next"), "/docs/");
   assert.match(signin.headers["set-cookie"]?.[0] ?? "", /^__Host-crv_door_state=/);

@@ -12,6 +12,7 @@ const key: TestKey = { kid: setup.kid, privateKey: createPrivateKey(readFileSync
 const alphaHost = new URL(setup.alpha).host;
 const session = "__Host-crv_door";
 const state = "__Host-crv_door_state";
+const seen = "__Host-crv_door_seen";
 
 /** Every request in these tests that reaches a gate, which must each say no-store or private. */
 const watchCaching = (page: Page) => {
@@ -235,6 +236,13 @@ test.describe("the ticket", () => {
     expect(cookie?.domain).toBe("localhost");
     expect((cookie?.expires ?? 0) - Date.now() / 1000).toBeLessThanOrEqual(3600);
     expect(await cookieNamed(context, setup.alpha, state)).toBeUndefined();
+    expect(await cookieNamed(context, setup.alpha, seen)).toMatchObject({
+      value: "1",
+      httpOnly: true,
+      secure: true,
+      sameSite: "Lax",
+      path: "/",
+    });
 
     await page.goto(`${setup.alpha}/`);
     await expect(page.locator("body")).toHaveAttribute("data-app", "loaded");
@@ -321,6 +329,61 @@ test.describe("the ticket", () => {
     ]);
     const answer = await page.request.get(`${setup.alpha}/docs/`, { maxRedirects: 0, headers: { accept: "*/*" } });
     expect(answer.status()).toBe(401);
+  });
+});
+
+test.describe("renewal", () => {
+  test("renews an ended session silently through the door, with no click, back to the page asked for", async ({
+    page,
+    context,
+  }) => {
+    await signIn(page, setup.alpha);
+    // The hour is up: the browser drops the session cookie at its Max-Age, and keeps the seen marker.
+    await context.clearCookies({ name: session });
+    expect(await cookieNamed(context, setup.alpha, seen)).toBeDefined();
+    const visited: string[] = [];
+    page.on("request", (request) => {
+      if (request.isNavigationRequest()) visited.push(new URL(request.url()).origin);
+    });
+    await page.goto(`${setup.alpha}/docs/?tab=api`);
+    await page.waitForURL(`${setup.alpha}/docs/?tab=api`);
+    await expect(page.locator("#title")).toHaveText("Locked docs");
+    expect(visited).toContain(setup.door);
+    await expect(signInButton(page)).toHaveCount(0);
+    expect(await cookieNamed(context, setup.alpha, session)).toBeDefined();
+  });
+
+  test("serves no site byte for the seen marker alone: a page load goes to the door, a fetch gets an empty 401", async ({
+    page,
+    context,
+  }) => {
+    await context.addCookies([
+      { name: seen, value: "1", url: setup.alpha, secure: true, httpOnly: true, sameSite: "Lax" },
+    ]);
+    for (const file of setup.files) {
+      const url = `${setup.alpha}/${file}`;
+      const load = await page.request.get(url, {
+        maxRedirects: 0,
+        headers: { "sec-fetch-mode": "navigate", accept: "text/html" },
+      });
+      expect(load.status(), url).toBe(302);
+      expect(new URL(load.headers().location ?? "").origin, url).toBe(setup.door);
+      await expectNoSiteBytes(load);
+      const fetched = await page.request.get(url, { maxRedirects: 0, headers: { accept: "*/*" } });
+      expect(fetched.status(), url).toBe(401);
+      await expectNoSiteBytes(fetched);
+    }
+  });
+
+  test("clears the seen marker on sign-out, so the next visit meets the coming-soon page", async ({
+    page,
+    context,
+  }) => {
+    await signIn(page, setup.alpha);
+    await page.goto(`${setup.alpha}/_door/signout?then=door`);
+    expect(await cookieNamed(context, setup.alpha, seen)).toBeUndefined();
+    await page.goto(`${setup.alpha}/docs/`);
+    await expect(signInButton(page)).toBeVisible();
   });
 });
 
