@@ -167,6 +167,19 @@ describe("the toolchain", () => {
   });
 });
 
+describe("the family conventions", () => {
+  // Every agent session in three repositories may read docs/conventions.md, and a conventions file that grows without
+  // bound becomes the done-log it was written to replace.
+  it("stay under 300 lines, and the README and CLAUDE.md point at them", async () => {
+    const text = await readFile(join(root, "docs", "conventions.md"), "utf8");
+    expect(text.split("\n").length).toBeLessThan(300);
+    expect(text).toMatch(/^# Family conventions$/m);
+    for (const file of ["README.md", "CLAUDE.md"]) {
+      expect(await readFile(join(root, file), "utf8"), file).toContain("the conventions Markset and Intentset follow");
+    }
+  });
+});
+
 describe("the door's deployment", () => {
   // The lock depends on this shape: a Static route, or a static/ directory, would be served by Amplify around the gate.
   it("has exactly one route, /* to Compute, and no static/ directory", async () => {

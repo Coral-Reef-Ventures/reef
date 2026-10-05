@@ -3,7 +3,10 @@
 Shared packages for the Coral Reef family: Streamlane (`coral-reef-ventures/streamlane`) and Driftline
 (`Coral-Reef-Ventures/driftline`). The two products stay in their own repositories; what both use lives here and is
 published to npm under the `@coralreefventures` scope, public, MIT, copyright Coral Reef Ventures, LLC. The scope is
-`@coralreefventures` because `@coral-reef` was taken and the company's domain is coralreefventures.com.
+`@coralreefventures` because `@coral-reef` was taken and the company's domain is coralreefventures.com. It also holds
+the conventions Markset and Intentset follow, in `docs/conventions.md`: the family's rules for commits, releases,
+changelogs, decision records, READMEs, CLAUDE.md files and sites, written once. Invariant 4 governs packages, not
+documents, so the conventions need no second consumer to live here.
 
 The reason it exists: Driftline's `apps/site` was created by copying Streamlane's, and jscpd then measured 87
 cross-repository clones, 2,191 lines, between the two sites (10 files byte-identical, about 40 near-identical). The
@@ -58,6 +61,8 @@ packages/
                deliver function. (The brief guessed recipient, subject and origin as the parameters; the two
                handlers differed only in their field tables, and CORS lives on the function URL in each product's
                backend.ts, so those are not here.)
+docs/
+  conventions.md    the conventions Markset, Intentset and reef follow (2026-10-05); under 300 lines, a test holds it
 test/
   tooling.test.ts   the repository's shape: scope, version, pins, licence, release order, no product scope in src
   consumer/         smoke.ts packs every package and installs them into an empty pnpm project; consumer-entry.tsx is
@@ -110,6 +115,8 @@ test/
 
 ## Publishing, and the trap
 
+The family's release procedure and the trap are in `docs/conventions.md`; this section is reef's own values.
+
 **A package npm has never seen cannot be published by CI.** Trusted publishing is configured per package on
 npmjs.com, a package that does not exist cannot have a publisher configured, and the first publish of a new package
 therefore has to be done by hand, in a terminal, with the passkey: `pnpm --filter @coralreefventures/<name> publish`
@@ -152,6 +159,9 @@ Registry reads lag publication by minutes: the workflow log printing `+ name@ver
   exclusion is right, not a workaround.
 
 ## Working rules
+
+Family conventions: `docs/conventions.md`, which this repository follows. Departures: no CHANGELOG or decision records
+yet, so release history is the Status list below until the first of either; no site, so the site rules do not apply.
 
 - Commit messages are one plain sentence saying what changed and why.
 - A change to a package and the test that pins it land in the same commit. When a shared component changes in a way a

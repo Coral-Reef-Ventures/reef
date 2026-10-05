@@ -2,6 +2,7 @@
 
 Shared packages for the Coral Reef family of products, Streamlane and Driftline. The products stay in their own
 repositories; what both of them use lives here and is published to npm under the `@coralreefventures` scope.
+It also holds the conventions Markset and Intentset follow, in [`docs/conventions.md`](docs/conventions.md).
 
 Driftline's public site was created by copying Streamlane's, and a clone detector then found 87 cross-repository
 clones, 2,191 lines, between the two. The first version holds the four things the measurement pointed at:
