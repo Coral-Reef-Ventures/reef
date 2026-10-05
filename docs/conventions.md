@@ -21,9 +21,10 @@ question: the conventions live in reef).
 - **Don't add a dependency without asking.** The approval is recorded (below) with its date. Origin: all three.
 - **Agents working in parallel do not run `pnpm install` at the root they share**; whoever owns the root does. An agent
   in its own worktree installs there. Origin: Intentset CLAUDE.md.
-- **Green pull requests merge without a human review, in every family repository**; a release is tagged when ready.
-  Never force-push, never rebase a pushed branch; when behind, merge `origin/main` and keep both sides' intent.
-  Origin: Gary's standing instruction, 2026-10-04.
+- **A pull request opened by an agent Gary runs merges once it is green, without waiting for his review**, and a
+  release is tagged when ready. Every other pull request, a fork's included, waits for a human: all three repositories
+  are public, so green CI on an outside contributor's branch is not a review. Origin: Gary's standing instruction to
+  the agents he runs, 2026-10-04.
 
 ## Releasing
 
@@ -208,8 +209,8 @@ Every page of a family site has, and a test holds:
   versions go stale: Intentset's hero said 0.4 while its package was 0.6.0.
 - Playwright checks at **390px and 1440px**: nothing scrolls sideways, nothing is clipped, every link at least 24px
   tall, primary calls to action at least 44px, the skip link and focus ring work from the keyboard, and the navigation
-  wraps below the brand at phone width. Headless Chrome clamps its window to 500px, so a 390px measurement is taken
-  inside an iframe of that width.
+  wraps below the brand at phone width. Each check opens a Playwright page with a viewport of that width
+  (`newPage({ viewport: { width, height: 900 } })`), as Intentset's test does; no iframe is needed.
 - The color-scheme control (three radios read by `body:has()`, `data-scheme` on `<body>`), whose one script sits
   outside `<main>`; nothing inside `<main>` has a script.
 
