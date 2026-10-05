@@ -6,10 +6,16 @@ import { bundleDoor } from "../door/package.ts";
 
 const usage = `reef-door-bundle --site <id> [--out out] [--dest .amplify-hosting] --door-url <url> --hosts <h1,h2>
                  --jwks-url <url> [--signout-chain id=host,id=host] [--host-header host|x-forwarded-host]
+                 [--name <display name>] [--mark <file in out>] [--mark-dark <file in out>]
+                 [--accent #rrggbb] [--accent-dark #rrggbb]
 
 Locks a static export behind the door: writes .amplify-hosting with the export inside the gate's compute bundle and
 one route, /* to Compute. --door-url, --hosts, --jwks-url, --signout-chain and --host-header fall back to
-CRV_DOOR_URL, CRV_DOOR_HOSTS, CRV_DOOR_JWKS_URL, CRV_DOOR_SIGNOUT_CHAIN and CRV_DOOR_HOST_HEADER.`;
+CRV_DOOR_URL, CRV_DOOR_HOSTS, CRV_DOOR_JWKS_URL, CRV_DOOR_SIGNOUT_CHAIN and CRV_DOOR_HOST_HEADER.
+
+A page load without a session gets a coming-soon page: --name (the site id, capitalized, by default), --mark and
+--mark-dark (an .svg or .png inside the export, inlined; none by default), --accent and --accent-dark (the button's
+color in each scheme, at least 3:1 on the page; neutral by default).`;
 
 const { values } = parseArgs({
   options: {
@@ -21,6 +27,11 @@ const { values } = parseArgs({
     "jwks-url": { type: "string" },
     "signout-chain": { type: "string" },
     "host-header": { type: "string" },
+    name: { type: "string" },
+    mark: { type: "string" },
+    "mark-dark": { type: "string" },
+    accent: { type: "string" },
+    "accent-dark": { type: "string" },
     help: { type: "boolean", short: "h" },
   },
 });
@@ -52,6 +63,13 @@ try {
     jwksUrl,
     signout: parseSignoutChain(values["signout-chain"] ?? env.CRV_DOOR_SIGNOUT_CHAIN),
     hostHeader,
+    page: {
+      name: values.name,
+      mark: values.mark,
+      markDark: values["mark-dark"],
+      accent: values.accent,
+      accentDark: values["accent-dark"],
+    },
   });
   console.log(`reef-door-bundle: ${values.dest} written for ${values.site}, gate ${manifest.framework.version}`);
 } catch (error) {

@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -6,7 +6,7 @@ import { pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { parseGateConfig, parseSignoutChain } from "../src/door/config.ts";
-import { bundleDoor, checkDeployment, fetchJwks, gateFiles } from "../src/door/package.ts";
+import { bundleDoor, checkDeployment, fetchJwks, gateFiles, readMark } from "../src/door/package.ts";
 import { jwksOf, makeKey } from "./door-fixtures.ts";
 
 /**
@@ -19,6 +19,10 @@ let out: string;
 let dest: string;
 let gateRoot: string;
 let jwksUrl: string;
+const png = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  "base64",
+);
 
 beforeEach(async () => {
   work = await mkdtemp(path.join(tmpdir(), "reef-door-bundle-"));
@@ -84,6 +88,7 @@ describe("bundleDoor", () => {
       "compute/default/gate.config.json",
       "compute/default/gate/door/config.js",
       "compute/default/gate/door/next.js",
+      "compute/default/gate/door/page.js",
       "compute/default/gate/door/server.js",
       "compute/default/gate/door/verify.js",
       "compute/default/gate/package.json",
@@ -114,7 +119,45 @@ describe("bundleDoor", () => {
     });
     expect(written.jwks.keys).toHaveLength(1);
     expect(written.jwks.keys[0]).not.toHaveProperty("d");
-    expect(() => parseGateConfig(written)).not.toThrow();
+    expect(written.page).toEqual({});
+    expect(parseGateConfig(written).page).toMatchObject({ name: "Alpha" });
+  });
+
+  it("writes the coming-soon page's name, colors and marks, the marks read from the export and inlined", async () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2 2"><circle r="1"/></svg>';
+    await mkdir(path.join(out, "brand"));
+    await writeFile(path.join(out, "brand", "mark.svg"), svg);
+    await writeFile(path.join(out, "brand", "mark-dark.png"), png);
+    await bundle({
+      page: {
+        name: "Alpha Site",
+        mark: "/brand/mark.svg",
+        markDark: "brand/mark-dark.png",
+        accent: "#2A5A8C",
+        accentDark: "#A8C6E8",
+      },
+    });
+    const written = JSON.parse(await readFile(path.join(dest, "compute", "default", "gate.config.json"), "utf8"));
+    expect(written.page).toEqual({
+      name: "Alpha Site",
+      mark: { type: "image/svg+xml", data: Buffer.from(svg).toString("base64") },
+      markDark: { type: "image/png", data: png.toString("base64") },
+      accent: "#2A5A8C",
+      accentDark: "#A8C6E8",
+    });
+    expect(parseGateConfig(written).page.accent).toBe("#2a5a8c");
+  });
+
+  it.each([
+    ["a mark outside the export", { mark: "../jwks.json" }],
+    ["a mark that is not there", { mark: "brand/none.svg" }],
+    ["a mark that is neither .svg nor .png", { mark: "index.html" }],
+    ["an accent too faint to see", { accent: "#eeeeee" }],
+    ["a dark accent too dark to see", { accentDark: "#222222" }],
+    ["a name with a control character", { name: "Al\u0007pha" }],
+  ])("refuses the page with %s, writing nothing", async (_name, page) => {
+    await expect(bundle({ page })).rejects.toThrow();
+    await expect(readdir(dest)).rejects.toThrow();
   });
 
   it("replaces an earlier deployment rather than adding to it", async () => {
@@ -156,6 +199,22 @@ describe("bundleDoor", () => {
 
   it("fails when the JWKS is unreachable", async () => {
     await expect(fetchJwks("https://127.0.0.1:9/.well-known/crv-door-jwks.json")).rejects.toThrow(/unreachable/);
+  });
+});
+
+describe("readMark", () => {
+  it("refuses a link out of the export, a PNG that is not one, an SVG that is not one, and a large file", async () => {
+    await writeFile(path.join(work, "secret.svg"), "<svg></svg>");
+    await symlink(path.join(work, "secret.svg"), path.join(out, "linked.svg"));
+    await expect(readMark(out, "linked.svg")).rejects.toThrow(/outside/);
+    await writeFile(path.join(out, "fake.png"), "<svg></svg>");
+    await expect(readMark(out, "fake.png")).rejects.toThrow(/not a PNG/);
+    await writeFile(path.join(out, "fake.svg"), "hello");
+    await expect(readMark(out, "fake.svg")).rejects.toThrow(/not an SVG/);
+    await writeFile(path.join(out, "big.svg"), `<svg>${" ".repeat(70 * 1024)}</svg>`);
+    await expect(readMark(out, "big.svg")).rejects.toThrow(/over/);
+    await writeFile(path.join(out, "ok.svg"), "<svg viewBox='0 0 1 1'></svg>");
+    expect((await readMark(out, "/ok.svg")).type).toBe("image/svg+xml");
   });
 });
 

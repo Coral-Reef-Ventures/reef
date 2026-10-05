@@ -1,8 +1,9 @@
-import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { cp, mkdir, readdir, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { type GateConfigFile, parseGateConfig, type SignoutStop } from "./config.ts";
+import { maxMarkBytes, type PageConfigFile, type PageImage } from "./page.ts";
 import { parseJwks } from "./verify.ts";
 
 /**
@@ -10,7 +11,14 @@ import { parseJwks } from "./verify.ts";
  * import Node's modules and each other and nothing else, so the bundle needs no node_modules (a test holds the list
  * against the imports).
  */
-export const gateFiles = ["serve.js", "door/server.js", "door/config.js", "door/next.js", "door/verify.js"];
+export const gateFiles = [
+  "serve.js",
+  "door/server.js",
+  "door/config.js",
+  "door/next.js",
+  "door/page.js",
+  "door/verify.js",
+];
 
 /** Amplify takes a deployment of up to 220 MB; the gate refuses one over 200, which leaves room. */
 export const maxBundleBytes = 200 * 1024 * 1024;
@@ -38,10 +46,56 @@ export type BundleDoorOptions = {
   /** The sign-out walk, in order. */
   signout?: SignoutStop[];
   hostHeader?: GateConfigFile["hostHeader"];
+  /** The coming-soon page: the product's display name, its mark and dark mark as files in the export, its colors. */
+  page?: BundlePageOptions;
   /** The compiled package root the gate's files are copied from; this package's own `dist` by default. */
   gateRoot?: string;
   maxBytes?: number;
 };
+
+/** What the bin's page flags name. The marks are paths inside the static export, which the bundle inlines. */
+export type BundlePageOptions = {
+  name?: string | undefined;
+  mark?: string | undefined;
+  markDark?: string | undefined;
+  accent?: string | undefined;
+  accentDark?: string | undefined;
+};
+
+const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+/**
+ * Reads a mark from the site's own export, for the coming-soon page to carry inline: an SVG or a PNG, inside the
+ * export (a symbolic link out of it is refused), and small. It is shown through `<img>`, where an SVG runs no script.
+ */
+export const readMark = async (out: string, file: string): Promise<PageImage> => {
+  const root = await realpath(out);
+  const resolved = await realpath(path.resolve(root, file.replace(/^\/+/, ""))).catch(() => {
+    throw new Error(`the mark is not in the static export: ${file}`);
+  });
+  if (!resolved.startsWith(`${root}${path.sep}`)) throw new Error(`the mark is outside the static export: ${file}`);
+  const bytes = await readFile(resolved);
+  if (bytes.length > maxMarkBytes) throw new Error(`the mark is ${bytes.length} bytes, over ${maxMarkBytes}: ${file}`);
+  const extension = path.extname(resolved).toLowerCase();
+  if (extension === ".png") {
+    if (!bytes.subarray(0, 8).equals(pngSignature)) throw new Error(`the mark is not a PNG: ${file}`);
+    return { type: "image/png", data: bytes.toString("base64") };
+  }
+  if (extension === ".svg") {
+    if (!/<svg[\s>]/.test(bytes.toString("utf8"))) throw new Error(`the mark is not an SVG: ${file}`);
+    return { type: "image/svg+xml", data: bytes.toString("base64") };
+  }
+  throw new Error(`the mark must be an .svg or a .png: ${file}`);
+};
+
+/** The page's configuration from the bin's flags: the marks read from the export, everything else as given. */
+const pageFile = async (out: string, options: BundlePageOptions = {}): Promise<PageConfigFile> => ({
+  ...(options.name !== undefined && { name: options.name }),
+  ...(options.mark !== undefined && { mark: await readMark(out, options.mark) }),
+  ...(options.markDark !== undefined && { markDark: await readMark(out, options.markDark) }),
+  ...(options.accent !== undefined && { accent: options.accent }),
+  ...(options.accentDark !== undefined && { accentDark: options.accentDark }),
+});
 
 const packageRoot = fileURLToPath(new URL("../../", import.meta.url));
 const compiledRoot = fileURLToPath(new URL("../", import.meta.url));
@@ -155,6 +209,7 @@ export const bundleDoor = async (options: BundleDoorOptions): Promise<DeployMani
     hostHeader: options.hostHeader ?? "host",
     signout: options.signout ?? [],
     jwks,
+    page: await pageFile(out, options.page),
   };
   const config = parseGateConfig(configFile);
   configFile.door = config.door;

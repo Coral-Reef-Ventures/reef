@@ -10,7 +10,7 @@ wordmarks, colors) are each product's own and are not here. Product code is not 
 
 ## Status
 
-Released, at `0.3.0`, and used by both product sites. Four packages are published under the `@coralreefventures`
+Released, at `0.4.0`, and used by both product sites. Four packages are published under the `@coralreefventures`
 scope: `site`, `site-tools`, `theme` and `contact`. Every one is public and MIT, released together at one version.
 
 ## Develop

@@ -7,11 +7,14 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { parseGateConfig } from "../src/door/config.ts";
+import { unsafe } from "../src/door/next.ts";
 import {
+  challenge,
   createGate,
   isDocumentRequest,
   normalizePath,
   readCookie,
+  seenCookie,
   sessionCookie,
   stateCookie,
 } from "../src/door/server.ts";
@@ -192,6 +195,7 @@ describe("the gate, step by step", () => {
     expect(setCookies(reply)).toEqual([
       `${sessionCookie}=${jws}; Max-Age=3600; Path=/; Secure; HttpOnly; SameSite=Lax`,
       `${stateCookie}=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=None`,
+      `${seenCookie}=1; Max-Age=2592000; Path=/; Secure; HttpOnly; SameSite=Lax`,
     ]);
     expect(reply.headers["cache-control"]).toBe("no-store");
   });
@@ -240,13 +244,14 @@ describe("the gate, step by step", () => {
     expect((await send("GET", `/_door?ticket=${ticket()}`, navigate)).status).toBe(405);
   });
 
-  it("(5) clears both cookies and walks a fixed map, never a URL from the query", async () => {
+  it("(5) clears the door's three cookies and walks a fixed map, never a URL from the query", async () => {
     const walk = async (query: string) => {
       const reply = await send("GET", `/_door/signout${query}`, withSession());
       expect(reply.status).toBe(303);
       expect(setCookies(reply)).toEqual([
         `${sessionCookie}=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Lax`,
         `${stateCookie}=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=None`,
+        `${seenCookie}=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Lax`,
       ]);
       return reply.headers.location;
     };
@@ -288,7 +293,8 @@ describe("the gate, step by step", () => {
 
   it("(6) accepts the session on the host it was issued for and no other", async () => {
     const reply = await send("GET", "/", { ...navigate, ...withSession(), host: otherHost });
-    expect(reply.status).toBe(302);
+    expect(reply.status).toBe(401);
+    expect(reply.body).toContain("Alpha is coming soon.");
   });
 
   it.each([
@@ -299,10 +305,77 @@ describe("the gate, step by step", () => {
     expect((await send("GET", "/", withSession(extra))).status).toBe(401);
   });
 
-  it("(7) sends a page load to the door with a fresh state cookie and the canonical next", async () => {
+  /** The coming-soon page with its one varying part, the sign-in link's next, read out. */
+  const signinNext = (reply: Reply) => {
+    const href = /<a class="button" href="([^"]*)">/.exec(reply.body)?.[1] ?? "";
+    const url = new URL(href.replace(/&amp;/g, "&"), `https://${host}`);
+    expect(url.origin).toBe(`https://${host}`);
+    expect(url.pathname).toBe("/_door/signin");
+    return url.searchParams.get("next");
+  };
+  const siteBytes = ["<h1>Home</h1>", "<h1>Docs</h1>", "rsc payload", "Page not found", "console.log"];
+
+  it("(7) answers a page load with the coming-soon page: a 401, the gate's own HTML, no-store, nothing else set", async () => {
     const reply = await send("GET", "/docs/?tab=api", navigate);
+    expect(reply.status).toBe(401);
+    expect(reply.headers["content-type"]).toBe("text/html; charset=utf-8");
+    expect(reply.headers["content-length"]).toBe(String(Buffer.byteLength(reply.body)));
+    expect(reply.headers["cache-control"]).toBe("no-store");
+    expect(reply.headers["www-authenticate"]).toBe(challenge("alpha"));
+    expect(reply.headers["content-security-policy"]).toMatch(/^default-src 'none'; style-src 'sha256-[^']+'; /);
+    expect(reply.headers.location).toBeUndefined();
+    expect(reply.headers["set-cookie"]).toBeUndefined();
+    expect(reply.body).toContain("<h1>Alpha is coming soon.</h1>");
+    expect(reply.body).toContain(
+      '<a class="link" href="https://door.example/get-involved/?site=alpha">Get involved</a>',
+    );
+    expect(signinNext(reply)).toBe("/docs/?tab=api");
+  });
+
+  it("(7) answers HEAD for a page with the same headers and no body", async () => {
+    const get = await send("GET", "/docs/", navigate);
+    const head = await send("HEAD", "/docs/", navigate);
+    expect(head.status).toBe(401);
+    expect(head.body).toBe("");
+    const { date: _getDate, ...getHeaders } = get.headers;
+    const { date: _headDate, ...headHeaders } = head.headers;
+    expect(headHeaders).toEqual(getHeaders);
+  });
+
+  it("(7) holds no byte of the site, and is the same page for every path but the next it links to", async () => {
+    const placeholder = (body: string) => body.replace(/href="\/_door\/signin\?next=[^"]*"/, 'href="NEXT"');
+    const pages = await Promise.all(
+      ["/", "/docs/", "/index.txt", "/_next/static/chunks/app.js", "/og/home.png", "/nope/", "/404.html"].map(
+        (target) => send("GET", target, navigate),
+      ),
+    );
+    for (const reply of pages) {
+      expect(reply.status).toBe(401);
+      for (const bytes of siteBytes) expect(reply.body).not.toContain(bytes);
+      expect(placeholder(reply.body)).toBe(placeholder(pages[0]?.body ?? ""));
+    }
+    expect(pages.map(signinNext)).toEqual([
+      "/",
+      "/docs/",
+      "/index.txt",
+      "/_next/static/chunks/app.js",
+      "/og/home.png",
+      "/nope/",
+      "/404.html",
+    ]);
+  });
+
+  it("(7) links a next that would leave the site, or is too long, as /", async () => {
+    expect(signinNext(await send("GET", "/%2F%2Fevil.com", navigate))).toBe("/%2F%2Fevil.com");
+    expect(signinNext(await send("GET", `/${"a".repeat(600)}`, navigate))).toBe("/");
+  });
+
+  it("(4) starts a sign-in at /_door/signin: a fresh state cookie and a 302 to the door with the canonical next", async () => {
+    const reply = await send("GET", `/_door/signin?next=${encodeURIComponent("/docs/?tab=api")}`, navigate);
     expect(reply.status).toBe(302);
     expect(reply.body).toBe("");
+    expect(reply.headers["cache-control"]).toBe("no-store");
+    expect(reply.headers["x-robots-tag"]).toBe("noindex, nofollow");
     const location = new URL(reply.headers.location ?? "");
     expect(location.origin).toBe(door);
     expect(location.pathname).toBe("/");
@@ -318,15 +391,111 @@ describe("the gate, step by step", () => {
       next: "/docs/?tab=api",
       state: nonce,
     });
-    const again = await send("GET", "/docs/?tab=api", navigate);
+    const again = await send("GET", `/_door/signin?next=${encodeURIComponent("/docs/?tab=api")}`, navigate);
     expect(new URL(again.headers.location ?? "").searchParams.get("state")).not.toBe(nonce);
   });
 
-  it("(7) sends a next that would leave the site to the door as /", async () => {
-    const reply = await send("GET", "/%2F%2Fevil.com", navigate);
-    expect(new URL(reply.headers.location ?? "").searchParams.get("next")).toBe("/%2F%2Fevil.com");
-    const long = await send("GET", `/${"a".repeat(600)}`, navigate);
-    expect(new URL(long.headers.location ?? "").searchParams.get("next")).toBe("/");
+  it("(4) follows the coming-soon page's own link to the door, coming back to the page asked for", async () => {
+    const page = await send("GET", "/docs/?tab=api", navigate);
+    const href = (/<a class="button" href="([^"]*)">/.exec(page.body)?.[1] ?? "").replace(/&amp;/g, "&");
+    const reply = await send("GET", href, navigate);
+    expect(reply.status).toBe(302);
+    expect(new URL(reply.headers.location ?? "").searchParams.get("next")).toBe("/docs/?tab=api");
+  });
+
+  // Canonical next's hostile cases, arriving as the sign-in's query rather than as a request path: each is refused (/)
+  // or reduced to a path on this host. The location is always the door, and the next it names never leaves the site.
+  const hostile: [string, string, string][] = [
+    ["//evil.com", "next=%2F%2Fevil.com", "/"],
+    ["/\\evil.com", "next=%2F%5Cevil.com", "/"],
+    ["/\\\\evil.com", "next=%2F%5C%5Cevil.com", "/"],
+    ["/<TAB>/evil.com", "next=%2F%09%2Fevil.com", "/"],
+    ["/<LF>/evil.com", "next=%2F%0A%2Fevil.com", "/"],
+    ["/<CR><LF>Set-Cookie:x", "next=%2F%0D%0ASet-Cookie%3Ax", "/"],
+    ["/.//evil.com", "next=%2F.%2F%2Fevil.com", "/"],
+    ["/..//evil.com", "next=%2F..%2F%2Fevil.com", "/"],
+    ["https://evil.com", "next=https%3A%2F%2Fevil.com", "/"],
+    ["/%2F%2Fevil.com, kept: it is still a path", "next=%2F%252F%252Fevil.com", "/%2F%2Fevil.com"],
+    ["a next over 512 characters", `next=%2F${"a".repeat(600)}`, "/"],
+    ["no next", "", "/"],
+    ["an empty next", "next=", "/"],
+    ["a next sent twice", "next=%2Fa%2F&next=%2Fb%2F", "/"],
+    ["a dot segment", "next=%2Fa%2F..%2Fdocs%2F", "/docs/"],
+    ["a plain path and query", "next=%2Fdocs%2F%3Ftab%3Dapi", "/docs/?tab=api"],
+  ];
+  it.each(hostile)("(4) takes %s through /_door/signin to the door safely", async (_name, query, expected) => {
+    const reply = await send("GET", `/_door/signin?${query}`, navigate);
+    expect(reply.status).toBe(302);
+    expect(reply.headers["set-cookie"]?.length).toBe(1);
+    const location = new URL(reply.headers.location ?? "");
+    expect(location.origin).toBe(door);
+    expect(location.searchParams.get("next")).toBe(expected);
+    expect(location.searchParams.get("host")).toBe(host);
+    expect(unsafe(reply.headers.location ?? "")).toBe(false);
+  });
+
+  it("(4) starts a sign-in only by GET or HEAD, and only on an allowed host", async () => {
+    expect((await send("POST", "/_door/signin?next=%2F", navigate)).status).toBe(405);
+    const elsewhere = await send("GET", "/_door/signin?next=%2F", { ...navigate, host: "evil.example" });
+    expect(elsewhere.status).toBe(403);
+    expect(elsewhere.headers["set-cookie"]).toBeUndefined();
+    expect((await send("HEAD", "/_door/signin?next=%2F", navigate)).status).toBe(302);
+  });
+
+  it("(4) starts a sign-in only from a top-level navigation: a subresource or a frame sets no cookie", async () => {
+    const cases: Record<string, string>[] = [
+      { "sec-fetch-mode": "no-cors", "sec-fetch-dest": "image", accept: "image/*" },
+      { "sec-fetch-mode": "cors", accept: "*/*" },
+      { "sec-fetch-mode": "navigate", "sec-fetch-dest": "iframe", accept: "text/html" },
+      { accept: "*/*" },
+    ];
+    for (const headers of cases) {
+      const reply = await send("GET", "/_door/signin?next=%2F", headers);
+      expect(reply.status, JSON.stringify(headers)).toBe(401);
+      expect(reply.body).toBe("");
+      expect(reply.headers["set-cookie"], JSON.stringify(headers)).toBeUndefined();
+      expect(reply.headers.location).toBeUndefined();
+      expect(reply.headers["cache-control"]).toBe("no-store");
+    }
+    const top = await send("GET", "/_door/signin?next=%2F", { ...navigate, "sec-fetch-dest": "document" });
+    expect(top.status).toBe(302);
+  });
+
+  const seen = { cookie: `${seenCookie}=1` };
+  it("(7) bounces a page load from a browser that has had a session here silently through the door", async () => {
+    const reply = await send("GET", "/docs/?tab=api", { ...navigate, ...seen });
+    expect(reply.status).toBe(302);
+    expect(reply.body).toBe("");
+    expect(reply.headers["cache-control"]).toBe("no-store");
+    const location = new URL(reply.headers.location ?? "");
+    expect(location.origin).toBe(door);
+    expect(location.searchParams.get("next")).toBe("/docs/?tab=api");
+    expect(location.searchParams.get("site")).toBe("alpha");
+    const [stateSet] = setCookies(reply);
+    expect(stateSet).toMatch(/^__Host-crv_door_state=[A-Za-z0-9_-]{43}; Max-Age=600;/);
+    expect(location.searchParams.get("state")).toBe(/=([^;]*);/.exec(stateSet ?? "")?.[1]);
+    const expired = await send("GET", "/", {
+      ...navigate,
+      cookie: `${seenCookie}=1; ${sessionCookie}=${session({ iat: now - 3600, exp: now })}`,
+    });
+    expect(expired.status).toBe(302);
+  });
+
+  it("(7) serves none of the site for the seen cookie alone", async () => {
+    for (const target of ["/docs/", "/index.txt", "/_next/static/chunks/app.js", "/og/home.png", "/nope/"]) {
+      const fetched = await send("GET", target, { accept: "*/*", "sec-fetch-mode": "cors", ...seen });
+      expect(fetched.status, target).toBe(401);
+      expect(fetched.body, target).toBe("");
+      const loaded = await send("GET", target, { ...navigate, ...seen });
+      expect(loaded.status, target).toBe(302);
+      expect(loaded.body, target).toBe("");
+    }
+    const framed = await send("GET", "/docs/", { ...navigate, "sec-fetch-dest": "iframe", ...seen });
+    expect(framed.status).toBe(401);
+    expect(framed.headers["set-cookie"]).toBeUndefined();
+    expect(framed.body).toContain("Alpha is coming soon.");
+    const other = await send("GET", "/docs/", { ...navigate, cookie: `${seenCookie}=x` });
+    expect(other.status).toBe(401);
   });
 
   it("(7) answers anything that is not a page load with an empty 401", async () => {
@@ -334,6 +503,7 @@ describe("the gate, step by step", () => {
       const reply = await send("GET", target, { accept: "*/*", "sec-fetch-mode": "cors" });
       expect(reply.status, target).toBe(401);
       expect(reply.body, target).toBe("");
+      expect(reply.headers["www-authenticate"], target).toBe(challenge("alpha"));
       expect(reply.headers["set-cookie"], target).toBeUndefined();
     }
   });
@@ -348,6 +518,8 @@ describe("the gate, step by step", () => {
       ticketPost(ticket()),
       ticketPost(tamper(ticket())),
       send("GET", "/_door/signout?then=door"),
+      send("GET", "/_door/signin?next=%2F"),
+      send("HEAD", "/docs/", navigate),
       send("GET", "/_door/unknown"),
       send("GET", "/docs/", withSession()),
       send("GET", "/docs", withSession()),
