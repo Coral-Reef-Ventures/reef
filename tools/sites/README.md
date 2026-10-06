@@ -14,7 +14,8 @@ sites --help
 
 - **Install dekit once:** `brew install mprocs` (Homebrew's mprocs formula puts `dekit` on PATH since 0.10).
 - **`q` leaves the sites running** in the background, which is not what mprocs' `q` does; `Q` or `sites stop` stops
-  them, and `sites` says how many are still up each time you leave the TUI.
+  them, and `sites` says how many are still up each time you leave the TUI. dekit closes the TUI on `Q` before the
+  sites have stopped, so `sites` waits for them, up to two seconds, rather than count them as running.
 - **A skipped site says why, and nothing is ever killed** that the launcher did not start.
 
 Inside reef, `pnpm sites` runs the same command (`pnpm sites status`, and so on). `sites --no-attach` exits 1 only

@@ -8,7 +8,9 @@ import {
   commandFor,
   declaredPort,
   dekitConfig,
+  isActive,
   labelOf,
+  leftRunning,
   type Manifest,
   nodeSatisfies,
   ROOT_VARIABLE,
@@ -77,13 +79,15 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 /** Each task's state by name, from the runner; empty when the runner is not running. */
 const taskStates = (): Map<string, string> => {
   if (!runnerRunning()) return new Map();
-  const listed = JSON.parse(dekit(["ls", "--json"]).stdout || "{}") as { tasks?: { path: string; state: string }[] };
+  const ls = dekit(["ls", "--json"]);
+  if (ls.status !== 0) {
+    // The runner can exit between the two calls, as it does once Q has stopped the last site.
+    if (!runnerRunning()) return new Map();
+    throw new Failure(`sites: dekit ls failed: ${ls.stdout}`);
+  }
+  const listed = JSON.parse(ls.stdout || "{}") as { tasks?: { path: string; state: string }[] };
   return new Map((listed.tasks ?? []).map((task) => [task.path, task.state]));
 };
-
-/** A task that is starting, running, ready or stopping holds (or is about to hold) its port. */
-const isActive = (state: string | undefined): boolean =>
-  state !== undefined && !/^(idle|exited|done|backoff)/.test(state);
 
 const repoDir = (site: Site): string => join(root, site.repo);
 
@@ -283,6 +287,25 @@ const settle = async (started: readonly Site[]): Promise<number> => {
   return died;
 };
 
+/**
+ * How long the launcher waits, once the TUI has closed, for tasks that are stopping: after Q, attach returns before the
+ * sites have stopped, and they stop within half a second.
+ */
+const LEAVE_MS = 2000;
+
+/**
+ * How many sites the TUI left running: read at once after q, and after Q (or a stop or restart just before q) once
+ * nothing is stopping, or LEAVE_MS.
+ */
+const leftBehind = async (): Promise<number> => {
+  const deadline = Date.now() + LEAVE_MS;
+  for (;;) {
+    const count = leftRunning(taskStates().values(), Date.now() >= deadline);
+    if (count !== undefined) return count;
+    await sleep(100);
+  }
+};
+
 /** Set by Ctrl-C while sites are being started: the loop stops at the next site and says how far it got. */
 let interrupted = false;
 
@@ -325,7 +348,7 @@ const up = async (attach: boolean): Promise<number> => {
   }
   const status = dekit(["attach"], true).status;
   // q detaches rather than stopping anything, which mprocs' q does not; say so every time.
-  const active = [...taskStates().values()].filter(isActive).length;
+  const active = await leftBehind();
   if (active > 0) {
     console.log(
       `sites: ${active} ${active === 1 ? "site is" : "sites are"} still running in the background. ` +

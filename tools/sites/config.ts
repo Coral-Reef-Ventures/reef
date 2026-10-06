@@ -214,5 +214,26 @@ export const dekitConfig = (
   return `${lines.join("\n")}\n`;
 };
 
+/** A task that is starting, running, ready or stopping holds (or is about to hold) its port. */
+export const isActive = (state: string | undefined): boolean =>
+  state !== undefined && !/^(idle|exited|done|backoff)/.test(state);
+
+/** A task on its way down: stopped (`x`), restarting (`r`), or, with every other task, stopped by `Q`. */
+export const isStopping = (state: string | undefined): boolean => state?.startsWith("stopping") ?? false;
+
+/**
+ * How many sites the TUI left running, from the task states read once `dekit attach` has returned, or undefined while a
+ * task is stopping and it is too soon to tell. attach exits 0 on `q` and on `Q` alike, within milliseconds of the key,
+ * so the states are the only evidence (tried 2026-10-05): after `q` they are as they were, and after `Q` every task is
+ * stopping until it exits, then the runner exits and there are no states at all. A task stopped or restarted just
+ * before `q` is stopping too, and a restart comes back, so a stopping task means read again. Once the wait is over
+ * (`final`), a task still stopping is on its way down and is not counted.
+ */
+export const leftRunning = (states: Iterable<string>, final = false): number | undefined => {
+  const all = [...states];
+  if (!final && all.some(isStopping)) return undefined;
+  return all.filter((state) => isActive(state) && !isStopping(state)).length;
+};
+
 /** The repositories the sites live in, once each, in map order. */
 export const repositories = (): string[] => [...new Set(SITES.map((site) => site.repo))];

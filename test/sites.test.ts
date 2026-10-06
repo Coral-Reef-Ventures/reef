@@ -11,7 +11,9 @@ import {
   declaredPort,
   defaultRoot,
   dekitConfig,
+  isActive,
   labelOf,
+  leftRunning,
   type Manifest,
   nodeSatisfies,
   repositories,
@@ -125,6 +127,28 @@ describe("finding things", () => {
     expect(nodeSatisfies(">=22.18", "v22.17.1")).toBe(false);
     expect(nodeSatisfies("^24", "v24.15.0")).toBeUndefined();
     expect(nodeSatisfies(undefined, "v20.0.0")).toBe(true);
+  });
+});
+
+describe("leaving the TUI", () => {
+  // The task states dekit reported after each key, 2026-10-05; attach exited 0 within milliseconds every time.
+  it("counts every site left running after q, including one just started", () => {
+    expect(leftRunning(["ready", "ready", "ready"])).toBe(3);
+    expect(leftRunning(["starting", "running", "idle", "exited (code 1)", "backoff (signal 9)"])).toBe(2);
+    expect(["ready", "starting", "running", "stopping"].every(isActive)).toBe(true);
+  });
+
+  it("waits while Q stops them, and counts none once the runner has gone or the wait is over", () => {
+    expect(leftRunning(["stopping", "stopping", "stopping"])).toBeUndefined();
+    expect(leftRunning(["idle", "stopping", "idle"])).toBeUndefined();
+    expect(leftRunning([])).toBe(0);
+    expect(leftRunning(["idle", "stopping", "idle"], true)).toBe(0);
+  });
+
+  it("waits out a site restarted just before q, which comes back, and does not count one stopped", () => {
+    expect(leftRunning(["stopping", "ready", "ready"])).toBeUndefined();
+    expect(leftRunning(["running", "ready", "ready"])).toBe(3);
+    expect(leftRunning(["idle", "ready", "ready"])).toBe(2);
   });
 });
 
