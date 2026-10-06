@@ -219,20 +219,29 @@ review for sitemap, robots, 404 and `{{version}}`, which neither site had.
 
 ### Footer
 
-```
-Name · one-sentence statement · Source on GitHub · A Coral Reef Ventures project · <sibling>
-```
+Every product site's footer is, in this order:
 
-"A Coral Reef Ventures project" is the family line, linked to coralreefventures.com, on every site. Each product site
-links its sibling once, in the footer: markset.org to intentset.org and back. Nothing in the format's own pages names
-the sibling; Markset stays a neutral format. Intentset keeps its footer nav row above the line, and About lives there,
-not in the bar. Origin: Markset's footer, Gary's answer of 2026-10-05.
+1. **A link row**, `<nav class="site-footer-nav" aria-label="Footer">`: the site's menu links, then the one "about"
+   page the menu does not carry (Markset's Why Markset, Intentset's About). The row is styled as Intentset's
+   `.site-footer-nav`.
+2. **One line, one `<p>`**:
+
+   ```
+   <strong>Name</strong> · one-sentence statement · Source on GitHub · A Coral Reef Ventures project · Sibling project: <sibling>
+   ```
+
+The statement is one sentence saying what the product is: Markset's "A strict superset of CommonMark with a closed
+layout vocabulary.", Intentset's "Keep control of what your agents build." The link texts are exactly "Source on
+GitHub" (the repository) and "A Coral Reef Ventures project" (`https://coralreefventures.com/`), the family line on
+every site. Each product site links its sibling once, on the same line: markset.org to intentset.org and back.
+Nothing in the format's own pages names the sibling; Markset stays a neutral format. The footer's family figure
+(`.site-family`) stays as it is. Origin: Gary's decision of 2026-10-06.
 
 ### Status labels and voice
 
 - **Status labels are coralreefventures.com's**, used on each home page: Markset `Open source · v0`, Intentset
   `Open source · Early release`, Streamlane `Product · In development`, Driftline `Product · In planning`. The precise
-  version goes in a badge or `{{version}}`, not in the label. The source is `site/products.ts` in coral-reef-site.
+  version goes in a badge or `{{version}}`, not in the label. The source is `apps/web/lib/product-facts.ts` in coral-reef-site.
 - **Headlines end with a period**: "Keep control of what your agents build." The tab-title code strips it. Home-page
   taglines match the CRV cards word for word.
 - **The guide an agent reads is "the agent guide"**, printed by `<tool> guide`.
