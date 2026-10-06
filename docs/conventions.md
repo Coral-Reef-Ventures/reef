@@ -241,7 +241,8 @@ Nothing in the format's own pages names the sibling; Markset stays a neutral for
 
 - **Status labels are coralreefventures.com's**, used on each home page: Markset `Open source · v0`, Intentset
   `Open source · Early release`, Streamlane `Product · In development`, Driftline `Product · In planning`. The precise
-  version goes in a badge or `{{version}}`, not in the label. The source is `apps/web/lib/product-facts.ts` in coral-reef-site.
+  version goes in a badge or `{{version}}`, not in the label.
+  The source is `apps/web/lib/product-facts.ts` in coral-reef-site.
 - **Headlines end with a period**: "Keep control of what your agents build." The tab-title code strips it. Home-page
   taglines match the CRV cards word for word.
 - **The guide an agent reads is "the agent guide"**, printed by `<tool> guide`.
