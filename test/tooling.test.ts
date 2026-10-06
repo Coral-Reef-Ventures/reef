@@ -261,6 +261,20 @@ describe("the family conventions", () => {
       expect(await readFile(join(root, file), "utf8"), file).toContain("the conventions Markset and Intentset follow");
     }
   });
+
+  // Gary's decision of 2026-10-06: both product sites' footers are a link row, then one line in this order. The sites'
+  // own tests hold their footers; this holds the rule they are written to.
+  it("give the footer as a link row, then one line with its exact link texts", async () => {
+    const text = await readFile(join(root, "docs", "conventions.md"), "utf8");
+    const footer = text.slice(text.indexOf("### Footer\n"), text.indexOf("### Status labels and voice"));
+    expect(footer).toContain('<nav class="site-footer-nav" aria-label="Footer">');
+    expect(footer).toContain(
+      "<strong>Name</strong> · one-sentence statement · Source on GitHub · A Coral Reef Ventures project · Sibling project: <sibling>",
+    );
+    expect(footer.indexOf("site-footer-nav")).toBeLessThan(footer.indexOf("<strong>Name</strong>"));
+    expect(footer).toContain("Origin: Gary's decision of 2026-10-06.");
+    expect(text).toContain("`apps/web/lib/product-facts.ts` in coral-reef-site");
+  });
 });
 
 describe("the door's deployment", () => {
