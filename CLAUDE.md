@@ -249,7 +249,7 @@ All pinned exactly, all MIT, Apache-2.0, BSD or ISC. The first group came with t
 - [x] 0.4.0, 2026-10-05: the coming-soon page (`src/door/page.ts`). A page load without a session no longer goes
       straight to the door: it gets a small page on the product's own domain, the product's mark and name, "<Name> is
       coming soon." and "Open for now to invited guests.", a "Have an invitation? Sign in" button and a "Get involved"
-      link to the door's `/get-involved/?site=<id>` (Gary's choice, 2026-10-05, so approved copy). The button goes to
+      link to the door's `/get-involved/?site=<id>` (Gary's choice, 2026-10-05). The button goes to
       `GET /_door/signin?next=<canonical next>`, which does what step 7 did: Canonical next on the query's `next`, a
       fresh state cookie and the 302 to the door. The page is the gate's own HTML (one inline stylesheet allowed by
       hash, the mark as a data URI, no script, no request) and is the same bytes for every path but its next. It is a
