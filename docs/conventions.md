@@ -239,6 +239,9 @@ Nothing in the format's own pages names the sibling; Markset stays a neutral for
 
 ### Status labels and voice
 
+- **Copy can be written and changed without approval** (Gary, 2026-10-06): no copy log, no proposed status, no
+  test that asks for an entry. It never invents a fact: no domain, link, contact address, price, legal or privacy
+  claim, or claim that is not true today.
 - **Status labels are coralreefventures.com's**, used on each home page: Markset `Open source · v0`, Intentset
   `Open source · Early release`, Streamlane `Product · In development`, Driftline `Product · In planning`. The precise
   version goes in a badge or `{{version}}`, not in the label.

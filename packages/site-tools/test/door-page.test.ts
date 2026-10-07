@@ -31,7 +31,7 @@ describe("comingSoon", () => {
   );
   const html = page.html("/docs/?tab=api&x=1");
 
-  it("says the approved words: the name, coming soon, invited guests, a sign-in button and Get involved", () => {
+  it("says its words: the name, coming soon, invited guests, a sign-in button and Get involved", () => {
     expect(html).toContain("<title>Driftline is coming soon</title>");
     expect(html).toContain("<h1>Driftline is coming soon.</h1>");
     expect(html).toContain('<p class="lede">Open for now to invited guests.</p>');
