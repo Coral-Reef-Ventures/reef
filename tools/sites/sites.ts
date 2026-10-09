@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { connect } from "node:net";
-import { join, relative, sep } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 import { stripVTControlCharacters } from "node:util";
 
 import {
@@ -112,7 +112,7 @@ const writeConfig = (): void => {
     const command = existsSync(dir) ? commandOf(site) : { error: `no repository at ${dir}` };
     commands.set(site.name, "argv" in command ? command.argv : command);
   }
-  const text = dekitConfig(root, commands);
+  const text = dekitConfig(root, commands, dirname(process.execPath));
   const file = join(runnerDir, "dekit.yaml");
   const before = existsSync(file) ? readFileSync(file, "utf8") : undefined;
   if (text === before) return;

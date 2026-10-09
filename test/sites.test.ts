@@ -55,7 +55,7 @@ describe("the port map", () => {
 describe("the dekit.yaml it writes", () => {
   it("has one task per site, in port order, in its repository's root, with a ready check on its port", () => {
     const commands = new Map(SITES.map((site) => [site.name, ["pnpm", "run", site.name]]));
-    const text = dekitConfig("/repos", commands);
+    const text = dekitConfig("/repos", commands, "/node/bin");
     expect([...text.matchAll(/^ {2}([a-z-]+):$/gm)].map((match) => match[1])).toEqual(SITES.map((site) => site.name));
     for (const site of SITES) {
       const task = text.slice(text.indexOf(`  ${site.name}:\n`)).split(/\n(?= {2}[a-z])/)[0] ?? "";
@@ -66,10 +66,16 @@ describe("the dekit.yaml it writes", () => {
     }
   });
 
+  it("puts the Node that ran sites first on every task's PATH, so a runner started under another Node still finds it", () => {
+    const text = dekitConfig("/repos", new Map(), "/Users/me/.nvm/versions/node/v24.21.0/bin");
+    expect(text).toContain('defaults:\n  add_path: ["/Users/me/.nvm/versions/node/v24.21.0/bin"]\ntasks:\n');
+  });
+
   it("keeps a task whose command cannot be found, as one that says why and fails, so the list keeps its order", async () => {
     const text = dekitConfig(
       "/repos",
       new Map([["markset", { error: 'markset\'s package.json has no "site:watch"' }]]),
+      "/node/bin",
     );
     const reason = 'markset\'s package.json has no "site:watch"';
     expect(text).toContain(
