@@ -126,7 +126,10 @@ stripping; `config.ts` is the map. Each run writes `dekit.yaml` to `~/.local/sta
 so `sites stop` from any checkout reaches sites a worktree started, and removing that worktree cannot strand a runner
 holding the ports. A changed file is reloaded by a running runner without stopping its sites. A site whose command
 cannot be read (no repository, no script) is written as a command that prints why and exits 1, so an `r` in the TUI
-says what is wrong. The runner takes its environment, PATH and Node included, from the terminal that first starts
-it.
+says what is wrong. The runner takes its environment from the terminal that first starts it, and outlives that
+terminal, so the file also puts the directory of the Node that ran `sites` first on every task's PATH (`defaults:
+add_path`). Each run rewrites it, so a Node removed or switched since the runner started (Homebrew's, replaced by
+nvm's on 2026-10-09) is never the one a restarted site looks for, and the preflight's check of each site's
+`engines.node` is a check of the Node that site will run.
 
 On Gary's machine `~/.local/bin/sites` is a symlink to `tools/sites/sites` in reef's main checkout.

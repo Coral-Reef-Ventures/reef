@@ -193,9 +193,15 @@ export const unavailable = (reason: string): string[] => [
 export const dekitConfig = (
   root: string,
   commands: ReadonlyMap<string, readonly string[] | { readonly error: string }>,
+  nodeDir: string,
 ): string => {
   const lines = [
     "# Written by tools/sites/sites on each run, from tools/sites/config.ts. Edit that file, not this one.",
+    // Every task runs the Node that ran sites, whatever PATH the runner was started with: the runner outlives the
+    // terminal that started it, so a Node removed or switched since (Homebrew's for nvm's, 2026-10-09) would otherwise
+    // leave each restart with no node at all. The preflight checks each site's engines against this same Node.
+    "defaults:",
+    `  add_path: [${quote(nodeDir)}]`,
     "tasks:",
   ];
   for (const site of SITES) {
