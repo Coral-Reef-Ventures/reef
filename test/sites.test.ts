@@ -42,7 +42,7 @@ describe("the port map", () => {
   });
 
   it("labels a site with an https side by both ports, and names that side in the README's row", async () => {
-    expect(SITES.map(labelOf)).toContain("streamlane 3001 · https 3443");
+    expect(SITES.map(labelOf)).toContain("streamlane 3001+3443");
     const readme = await readFile(join(toolDir, "README.md"), "utf8");
     for (const site of SITES.filter((site) => site.https)) {
       const row = readme.split("\n").find((line) => line.startsWith(`| ${site.port} | \`${site.name}\` |`));

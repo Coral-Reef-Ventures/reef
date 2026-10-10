@@ -87,8 +87,8 @@ swap a working site for one that cannot start:
   proxy, `https://localhost:3443` (Streamlane #514, 2026-10-10: Slack accepts only an https redirect). The proxy uses
   `apps/web/certificates/localhost.pem`, which `next dev --experimental-https` makes once after asking for your
   password; a launcher task cannot answer that prompt, so a missing certificate is a warning with the command to run in
-  a terminal, and the site starts on http meanwhile. The https side is in the TUI's label (`streamlane 3001 · https
-  3443`), and `sites status` gives it a row of its own under the site, checked over https without verifying that
+  a terminal, and the site starts on http meanwhile. The https side is in the TUI's label (`streamlane 3001+3443`, kept short so
+  the pane still shows its state), and `sites status` gives it a row of its own under the site, checked over https without verifying that
   machine-made certificate, so a side that is off shows as `no` while the site's own row answers.
 
 After starting, it waits two seconds and reports any site that has already exited (a missing script, an Atlas pin npm

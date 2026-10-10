@@ -188,9 +188,13 @@ export const httpsWarning = (site: Site, certificateExists: boolean): string | u
       `it is ready, then sites restart ${site.name}`
     : undefined;
 
-/** A task's label: its name and port, and its https port when it has one, as the TUI lists it. */
+/**
+ * A task's label: its name and port, and its https port after a plus, as the TUI lists it. The TUI's task pane shows
+ * the state after the label and cuts a long label short, so this one stays no longer than `streamlane-site 3005`
+ * (tried 2026-10-10: "streamlane 3001 · https 3443" hid the state).
+ */
 export const labelOf = (site: Site): string =>
-  site.https ? `${site.name} ${site.port} · https ${site.https.port}` : `${site.name} ${site.port}`;
+  site.https ? `${site.name} ${site.port}+${site.https.port}` : `${site.name} ${site.port}`;
 
 const quote = (text: string): string => JSON.stringify(text);
 
