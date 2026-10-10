@@ -1,10 +1,13 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { get as httpGet, type IncomingMessage } from "node:http";
+import { get as httpsGet } from "node:https";
 import { connect } from "node:net";
 import { dirname, join, relative, sep } from "node:path";
 import { stripVTControlCharacters } from "node:util";
 
 import {
+  certificateMissing,
   commandFor,
   declaredPort,
   dekitConfig,
@@ -18,6 +21,7 @@ import {
   runnerDirOf,
   SITES,
   type Site,
+  urlOf,
 } from "./config.ts";
 
 /**
@@ -197,6 +201,9 @@ const startable = (site: Site): Extract<Verdict, { kind: "start" | "skip" }> => 
   }
   const command = commandOf(site);
   if ("error" in command) return { kind: "skip", reason: command.error };
+  if (site.certificate && !existsSync(join(dir, site.certificate))) {
+    return { kind: "skip", reason: certificateMissing(site, dir) };
+  }
   const engines = manifestOf(site)?.engines?.node;
   const node = nodeSatisfies(engines, process.version);
   if (node === false) return { kind: "skip", reason: `needs Node ${engines}, and this is ${process.version}` };
@@ -421,25 +428,37 @@ const listening = (port: number): Promise<boolean> =>
  * HTTP status when the site answers within three seconds, "listening" when it accepts but is still compiling. A site
  * whose task is still starting gets a TCP check only, since a GET would set a Next dev server compiling its home page.
  */
-const answer = async (port: number, state: string | undefined): Promise<string> => {
-  if (isActive(state) && state !== "ready") return (await listening(port)) ? "listening" : "no";
-  try {
-    const response = await fetch(`http://localhost:${port}/`, {
-      redirect: "manual",
-      signal: AbortSignal.timeout(3000),
-    });
-    return `HTTP ${response.status}`;
-  } catch {
-    return (await listening(port)) ? "listening" : "no";
-  }
+const answer = async (site: Site, state: string | undefined): Promise<string> => {
+  if (isActive(state) && state !== "ready") return (await listening(site.port)) ? "listening" : "no";
+  const status = await statusOf(urlOf(site));
+  if (status !== undefined) return `HTTP ${status}`;
+  return (await listening(site.port)) ? "listening" : "no";
 };
+
+/**
+ * The status a GET of `url` answers within three seconds, redirects unfollowed. An https site's certificate is one
+ * `next dev` made and only the system's keychain trusts, so it is not checked: this asks whether the site answers, on
+ * this machine's own loopback, not whether it can be trusted.
+ */
+const statusOf = (url: string): Promise<number | undefined> =>
+  new Promise((resolve) => {
+    const answered = (response: IncomingMessage) => {
+      response.resume();
+      resolve(response.statusCode);
+    };
+    const request = url.startsWith("https:")
+      ? httpsGet(url, { rejectUnauthorized: false, timeout: 3000 }, answered)
+      : httpGet(url, { timeout: 3000 }, answered);
+    request.once("timeout", () => request.destroy());
+    request.once("error", () => resolve(undefined));
+  });
 
 const status = async (): Promise<number> => {
   const states = taskStates();
   const running = states.size > 0;
   // Who holds each port first, then whether it answers, so a row is not two moments a build apart.
   const holders = SITES.map((site) => holderOf(site.port));
-  const answers = await Promise.all(SITES.map((site) => answer(site.port, states.get(site.name))));
+  const answers = await Promise.all(SITES.map((site) => answer(site, states.get(site.name))));
   console.log(
     `${"site".padEnd(18)}${"port".padEnd(6)}${"task".padEnd(12)}${"answers".padEnd(11)}${"pid".padEnd(8)}directory`,
   );
