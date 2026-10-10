@@ -83,6 +83,12 @@ swap a working site for one that cannot start:
   site is skipped. **Nothing is ever killed that the launcher did not start.**
 - **Streamlane needs `amplify_outputs.json`** at its root: without it the product starts but has no backend to sign in
   against, so it is a warning, not a skip.
+- **Streamlane needs its certificate.** It serves at `https://localhost:3001` (Streamlane #506, 2026-10-10: Slack
+  accepts only an https redirect), and `next dev --experimental-https` makes `apps/web/certificates/localhost.pem` on
+  its first start, after asking for your password to trust a local certificate authority. A launcher task cannot answer
+  that prompt and would sit at it, never listening, so without the file the site is skipped with the command to run
+  once in a terminal (`cd streamlane && pnpm run dev`, the password, Ctrl-C once it is ready). Already stuck at the
+  prompt in the TUI? `C-a` and type the password there. `sites status` asks an https site over https.
 
 After starting, it waits two seconds and reports any site that has already exited (a missing script, an Atlas pin npm
 does not have), with the last lines of its output, as a failure. Ctrl-C while it is starting stops at the next site

@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 
 import {
+  certificateMissing,
   commandFor,
   declaredPort,
   defaultRoot,
@@ -21,6 +22,7 @@ import {
   runnerDirOf,
   SITES,
   unavailable,
+  urlOf,
 } from "../tools/sites/config.ts";
 
 /**
@@ -49,6 +51,25 @@ describe("the port map", () => {
       repo: match[4],
     }));
     expect(rows).toEqual(SITES.map(({ port, name, what, repo }) => ({ port, name, what, repo })));
+  });
+});
+
+describe("a site served over https", () => {
+  it("is Streamlane, asked over https, with the certificate next dev makes on its first start", () => {
+    const streamlane = SITES.find((site) => site.name === "streamlane");
+    expect(streamlane?.certificate).toBe("apps/web/certificates/localhost.pem");
+    expect(streamlane && urlOf(streamlane)).toBe("https://localhost:3001/");
+    expect(SITES.filter((site) => site.certificate).map((site) => site.name)).toEqual(["streamlane"]);
+    expect(SITES.map(urlOf)).toContain("http://localhost:3002/");
+  });
+
+  it("says, when the certificate is missing, what to run once in a terminal that can answer sudo", () => {
+    const streamlane = SITES.find((site) => site.name === "streamlane");
+    if (!streamlane) throw new Error("no streamlane site");
+    const reason = certificateMissing(streamlane, "/repos/streamlane");
+    expect(reason).toContain("no apps/web/certificates/localhost.pem");
+    expect(reason).toContain("cd /repos/streamlane && pnpm run dev");
+    expect(reason).toContain("sites restart streamlane");
   });
 });
 

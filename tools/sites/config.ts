@@ -30,6 +30,13 @@ export type Site = {
   readonly declares?: { readonly file: string; readonly script: string };
   /** A file the site needs and starts without, with what goes wrong: the preflight warns when it is missing. */
   readonly needs?: { readonly file: string; readonly why: string };
+  /**
+   * The certificate a site served over HTTPS reuses: `next dev --experimental-https` writes it on its first start,
+   * after trusting a local certificate authority with sudo. A launcher task cannot answer that password prompt and
+   * would wait at it forever, so the preflight skips a site whose certificate is missing and says what to run once in
+   * a terminal. A site that names one is also probed over https by `sites status`.
+   */
+  readonly certificate?: string;
 };
 
 export const SITES: readonly Site[] = [
@@ -51,6 +58,8 @@ export const SITES: readonly Site[] = [
       file: "amplify_outputs.json",
       why: "it starts, but has no backend to sign in against; the sandbox writes it (pnpm sandbox, Streamlane's README)",
     },
+    // https://localhost:3001 since Streamlane #506 (2026-10-10): Slack accepts only an https redirect.
+    certificate: "apps/web/certificates/localhost.pem",
   },
   {
     name: "crv",
@@ -167,6 +176,18 @@ export const nodeSatisfies = (range: string | undefined, version: string): boole
   }
   return true;
 };
+
+/** Where a site answers: over https when it names a certificate, otherwise http. */
+export const urlOf = (site: Site): string => `${site.certificate ? "https" : "http"}://localhost:${site.port}/`;
+
+/**
+ * Why a site cannot start yet when its certificate is missing: the command that makes it, to run once in a terminal
+ * that can answer sudo's prompt.
+ */
+export const certificateMissing = (site: Site, repoDir: string): string =>
+  `no ${site.certificate}: its first start asks for your password to trust a local certificate, which a launcher ` +
+  `task cannot answer; run once in a terminal: cd ${repoDir} && pnpm run ${"script" in site.run ? site.run.script : "dev"}, ` +
+  `enter the password, stop it with Ctrl-C once it is ready, then sites restart ${site.name}`;
 
 /** A task's label: what it is and its port, as the TUI lists it. */
 export const labelOf = (site: Site): string => `${site.name} ${site.port}`;
