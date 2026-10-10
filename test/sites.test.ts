@@ -7,11 +7,11 @@ import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 
 import {
-  certificateMissing,
   commandFor,
   declaredPort,
   defaultRoot,
   dekitConfig,
+  httpsWarning,
   isActive,
   labelOf,
   leftRunning,
@@ -22,7 +22,6 @@ import {
   runnerDirOf,
   SITES,
   unavailable,
-  urlOf,
 } from "../tools/sites/config.ts";
 
 /**
@@ -54,22 +53,22 @@ describe("the port map", () => {
   });
 });
 
-describe("a site served over https", () => {
-  it("is Streamlane, asked over https, with the certificate next dev makes on its first start", () => {
-    const streamlane = SITES.find((site) => site.name === "streamlane");
-    expect(streamlane?.certificate).toBe("apps/web/certificates/localhost.pem");
-    expect(streamlane && urlOf(streamlane)).toBe("https://localhost:3001/");
-    expect(SITES.filter((site) => site.certificate).map((site) => site.name)).toEqual(["streamlane"]);
-    expect(SITES.map(urlOf)).toContain("http://localhost:3002/");
+describe("a site with an https side", () => {
+  it("is Streamlane, whose https side on 3443 needs the certificate next dev makes", () => {
+    expect(SITES.filter((site) => site.https).map((site) => [site.name, site.https?.port])).toEqual([
+      ["streamlane", 3443],
+    ]);
   });
 
-  it("says, when the certificate is missing, what to run once in a terminal that can answer sudo", () => {
+  it("warns, without skipping, when the certificate is missing, with the command to run once in a terminal", () => {
     const streamlane = SITES.find((site) => site.name === "streamlane");
     if (!streamlane) throw new Error("no streamlane site");
-    const reason = certificateMissing(streamlane, "/repos/streamlane");
-    expect(reason).toContain("no apps/web/certificates/localhost.pem");
-    expect(reason).toContain("cd /repos/streamlane && pnpm run dev");
-    expect(reason).toContain("sites restart streamlane");
+    expect(httpsWarning(streamlane, true)).toBeUndefined();
+    const warning = httpsWarning(streamlane, false);
+    expect(warning).toContain("https://localhost:3443 stays off (http://localhost:3001 runs)");
+    expect(warning).toContain("pnpm exec next dev -p 3001 --experimental-https");
+    const { https: _, ...plain } = streamlane;
+    expect(httpsWarning(plain, false)).toBeUndefined();
   });
 });
 
