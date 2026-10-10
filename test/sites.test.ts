@@ -41,6 +41,15 @@ describe("the port map", () => {
     expect(SITES.map(labelOf)).toContain("crv 3002");
   });
 
+  it("labels a site with an https side by both ports, and names that side in the README's row", async () => {
+    expect(SITES.map(labelOf)).toContain("streamlane 3001 · https 3443");
+    const readme = await readFile(join(toolDir, "README.md"), "utf8");
+    for (const site of SITES.filter((site) => site.https)) {
+      const row = readme.split("\n").find((line) => line.startsWith(`| ${site.port} | \`${site.name}\` |`));
+      expect(row).toContain(`https://localhost:${site.https?.port}`);
+    }
+  });
+
   it("is the map tools/sites/README.md shows, row for row", async () => {
     const readme = await readFile(join(toolDir, "README.md"), "utf8");
     const rows = [...readme.matchAll(/^\| (\d+) \| `([a-z-]+)` \| ([^|]+?) \| `([a-z-]+)` \|/gm)].map((match) => ({
@@ -79,7 +88,7 @@ describe("the dekit.yaml it writes", () => {
     expect([...text.matchAll(/^ {2}([a-z-]+):$/gm)].map((match) => match[1])).toEqual(SITES.map((site) => site.name));
     for (const site of SITES) {
       const task = text.slice(text.indexOf(`  ${site.name}:\n`)).split(/\n(?= {2}[a-z])/)[0] ?? "";
-      expect(task).toContain(`label: "${site.name} ${site.port}"`);
+      expect(task).toContain(`label: "${labelOf(site)}"`);
       expect(task).toContain(`cwd: "/repos/${site.repo}"`);
       expect(task).toContain(`cmd: ["pnpm", "run", "${site.name}"]`);
       expect(task).toContain(`ready: {tcp: ${site.port}}`);

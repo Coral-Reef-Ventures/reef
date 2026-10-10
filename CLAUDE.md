@@ -107,7 +107,7 @@ vitest.config.ts    one test runner for every package; playwright.config.ts is t
   build it, and nothing else does. Its tests import `src/`.
 - Every dependency is pinned exactly and listed under Approved dependencies, with what it is for.
 - **`sites`** (`tools/sites/`, `pnpm sites` here, `~/.local/bin/sites` on Gary's machine) runs every site on the port
-  map, 3000 Atlas to 3006 driftline.app, under **dekit** (Homebrew's `mprocs` formula, renamed in 0.10), which is a
+  map, 3000 Atlas to 3006 driftline.app (and Streamlane's https side on 3443, in its label and a row of `sites status`), under **dekit** (Homebrew's `mprocs` formula, renamed in 0.10), which is a
   machine tool and not a dependency. It uses dekit's own runner mode rather than `dekit mprocs`: stop signals go to
   each task's whole process group, a TCP ready check on each port shows in `sites status` (the TUI shows `UP` either
   way), every action has a command by task name, and the sites outlive the terminal (`q` detaches and says how many
