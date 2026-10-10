@@ -31,12 +31,11 @@ export type Site = {
   /** A file the site needs and starts without, with what goes wrong: the preflight warns when it is missing. */
   readonly needs?: { readonly file: string; readonly why: string };
   /**
-   * The certificate a site served over HTTPS reuses: `next dev --experimental-https` writes it on its first start,
-   * after trusting a local certificate authority with sudo. A launcher task cannot answer that password prompt and
-   * would wait at it forever, so the preflight skips a site whose certificate is missing and says what to run once in
-   * a terminal. A site that names one is also probed over https by `sites status`.
+   * A second, https address the site serves beside its port, and the certificate that side needs. Without the
+   * certificate the site still starts on its port and the https side stays off, so the preflight warns, with the
+   * command that makes it: that command asks for a sudo password, which a launcher task cannot answer.
    */
-  readonly certificate?: string;
+  readonly https?: { readonly port: number; readonly certificate: string; readonly make: string };
 };
 
 export const SITES: readonly Site[] = [
@@ -58,8 +57,12 @@ export const SITES: readonly Site[] = [
       file: "amplify_outputs.json",
       why: "it starts, but has no backend to sign in against; the sandbox writes it (pnpm sandbox, Streamlane's README)",
     },
-    // https://localhost:3001 since Streamlane #506 (2026-10-10): Slack accepts only an https redirect.
-    certificate: "apps/web/certificates/localhost.pem",
+    // Streamlane #514 (2026-10-10): its pnpm dev proxies https://localhost:3443 to 3001, for Slack's https redirect.
+    https: {
+      port: 3443,
+      certificate: "apps/web/certificates/localhost.pem",
+      make: "cd apps/web && pnpm exec next dev -p 3001 --experimental-https",
+    },
   },
   {
     name: "crv",
@@ -177,17 +180,13 @@ export const nodeSatisfies = (range: string | undefined, version: string): boole
   return true;
 };
 
-/** Where a site answers: over https when it names a certificate, otherwise http. */
-export const urlOf = (site: Site): string => `${site.certificate ? "https" : "http"}://localhost:${site.port}/`;
-
-/**
- * Why a site cannot start yet when its certificate is missing: the command that makes it, to run once in a terminal
- * that can answer sudo's prompt.
- */
-export const certificateMissing = (site: Site, repoDir: string): string =>
-  `no ${site.certificate}: its first start asks for your password to trust a local certificate, which a launcher ` +
-  `task cannot answer; run once in a terminal: cd ${repoDir} && pnpm run ${"script" in site.run ? site.run.script : "dev"}, ` +
-  `enter the password, stop it with Ctrl-C once it is ready, then sites restart ${site.name}`;
+/** The preflight's warning for a site whose https side cannot start yet, or undefined when it can or has none. */
+export const httpsWarning = (site: Site, certificateExists: boolean): string | undefined =>
+  site.https && !certificateExists
+    ? `no ${site.https.certificate}, so https://localhost:${site.https.port} stays off (http://localhost:${site.port} ` +
+      `runs). To make it, once, in a terminal in ${site.repo}: ${site.https.make}, enter your password, Ctrl-C once ` +
+      `it is ready, then sites restart ${site.name}`
+    : undefined;
 
 /** A task's label: what it is and its port, as the TUI lists it. */
 export const labelOf = (site: Site): string => `${site.name} ${site.port}`;
