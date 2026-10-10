@@ -188,8 +188,9 @@ export const httpsWarning = (site: Site, certificateExists: boolean): string | u
       `it is ready, then sites restart ${site.name}`
     : undefined;
 
-/** A task's label: what it is and its port, as the TUI lists it. */
-export const labelOf = (site: Site): string => `${site.name} ${site.port}`;
+/** A task's label: its name and port, and its https port when it has one, as the TUI lists it. */
+export const labelOf = (site: Site): string =>
+  site.https ? `${site.name} ${site.port} · https ${site.https.port}` : `${site.name} ${site.port}`;
 
 const quote = (text: string): string => JSON.stringify(text);
 

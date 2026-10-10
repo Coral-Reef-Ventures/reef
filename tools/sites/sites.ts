@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { request } from "node:https";
 import { connect } from "node:net";
 import { dirname, join, relative, sep } from "node:path";
 import { stripVTControlCharacters } from "node:util";
@@ -36,12 +37,12 @@ const HELP = `sites: start every Coral Reef site, and watch, stop and restart ea
 Usage:
   sites [--no-attach]    start each site that is not running, then open the TUI (--no-attach: only start them)
   sites stop             stop every site and the runner (also: sites down)
-  sites status           each site, its port, whether it answers, and the pid and directory holding the port
+  sites status           each site, its port (and an https side), whether it answers, and the pid and directory holding the port
   sites restart <name>   restart one site, or start it if it is stopped
   sites --help
 
 Sites, in port order:
-${SITES.map((site) => `  ${site.name.padEnd(16)} ${site.port}  ${site.what}`).join("\n")}
+${SITES.map((site) => `  ${site.name.padEnd(16)} ${site.port}  ${site.what}${site.https ? `, and https://localhost:${site.https.port}` : ""}`).join("\n")}
 
 In the TUI: j/k or the arrows pick a site; s starts it, x stops it, X kills it, r restarts it; C-a moves between the
 list and the output (to scroll, or type into the site); z zooms the output; q leaves the TUI with the sites running;
@@ -437,20 +438,55 @@ const answer = async (port: number, state: string | undefined): Promise<string> 
   }
 };
 
+/**
+ * The same for a site's https side, whose certificate is the one `next dev --experimental-https` made and trusted on
+ * this machine alone, so the check does not verify it: the question is whether the side is up, not who signed it.
+ */
+const answerHttps = async (port: number, state: string | undefined): Promise<string> => {
+  if (isActive(state) && state !== "ready") return (await listening(port)) ? "listening" : "no";
+  const status = await new Promise<number | undefined>((resolve) => {
+    const req = request(
+      { host: "localhost", port, path: "/", method: "GET", rejectUnauthorized: false, timeout: 3000 },
+      (response) => {
+        response.resume();
+        resolve(response.statusCode);
+      },
+    );
+    req.once("timeout", () => req.destroy());
+    req.once("error", () => resolve(undefined));
+    req.end();
+  });
+  if (status !== undefined) return `HTTP ${status}`;
+  return (await listening(port)) ? "listening" : "no";
+};
+
+/** The rows of `sites status`: one per site, and one under it for an https side, which is the same task's. */
+type Row = { site: Site; port: number; https: boolean };
+
+const rows: readonly Row[] = SITES.flatMap((site) => [
+  { site, port: site.port, https: false },
+  ...(site.https ? [{ site, port: site.https.port, https: true }] : []),
+]);
+
 const status = async (): Promise<number> => {
   const states = taskStates();
   const running = states.size > 0;
   // Who holds each port first, then whether it answers, so a row is not two moments a build apart.
-  const holders = SITES.map((site) => holderOf(site.port));
-  const answers = await Promise.all(SITES.map((site) => answer(site.port, states.get(site.name))));
+  const holders = rows.map((row) => holderOf(row.port));
+  const answers = await Promise.all(
+    rows.map((row) =>
+      row.https ? answerHttps(row.port, states.get(row.site.name)) : answer(row.port, states.get(row.site.name)),
+    ),
+  );
   console.log(
     `${"site".padEnd(18)}${"port".padEnd(6)}${"task".padEnd(12)}${"answers".padEnd(11)}${"pid".padEnd(8)}directory`,
   );
-  for (const [index, site] of SITES.entries()) {
+  for (const [index, row] of rows.entries()) {
     const holder = holders[index];
-    const task = running ? (states.get(site.name) ?? "-") : "-";
+    const task = running ? (states.get(row.site.name) ?? "-") : "-";
+    const name = row.https ? "  https" : row.site.name;
     console.log(
-      `${site.name.padEnd(18)}${String(site.port).padEnd(6)}${task.padEnd(12)}${(answers[index] ?? "no").padEnd(11)}` +
+      `${name.padEnd(18)}${String(row.port).padEnd(6)}${task.padEnd(12)}${(answers[index] ?? "no").padEnd(11)}` +
         `${String(holder?.pid ?? "-").padEnd(8)}${holder ? shown(holder.cwd) : "-"}`,
     );
   }

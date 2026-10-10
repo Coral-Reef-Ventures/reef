@@ -7,7 +7,7 @@ is published, and it adds no dependency to reef.
 ```sh
 sites                    # start each site that is not running, then open the TUI
 sites stop               # stop every site and the runner (also: sites down)
-sites status             # each site, its port, whether it answers, and the pid and directory holding the port
+sites status             # each site, its port (and an https side), whether it answers, and who holds the port
 sites restart crv        # restart one site, or start it if it is stopped
 sites --help
 ```
@@ -29,7 +29,7 @@ table to `config.ts`, row for row; change both together.
 | Port | Site | What | Repository | Runs |
 | --- | --- | --- | --- | --- |
 | 3000 | `atlas` | Intentset Atlas over Streamlane's model | `streamlane` | `pnpm dlx @intentset/cli@<pinned> serve --port 3000` |
-| 3001 | `streamlane` | Streamlane, the product (apps/web) | `streamlane` | `pnpm run dev` |
+| 3001 | `streamlane` | Streamlane, the product (apps/web) | `streamlane` | `pnpm run dev`, which also serves `https://localhost:3443` |
 | 3002 | `crv` | coralreefventures.com, the CRV app (apps/web) | `coral-reef-site` | `pnpm run web:dev` |
 | 3003 | `markset` | markset.org | `markset` | `pnpm run site:watch --port 3003` |
 | 3004 | `intentset` | intentset.org | `intentset` | `pnpm run site:watch --port 3004` |
@@ -87,7 +87,9 @@ swap a working site for one that cannot start:
   proxy, `https://localhost:3443` (Streamlane #514, 2026-10-10: Slack accepts only an https redirect). The proxy uses
   `apps/web/certificates/localhost.pem`, which `next dev --experimental-https` makes once after asking for your
   password; a launcher task cannot answer that prompt, so a missing certificate is a warning with the command to run in
-  a terminal, and the site starts on http meanwhile.
+  a terminal, and the site starts on http meanwhile. The https side is in the TUI's label (`streamlane 3001 · https
+  3443`), and `sites status` gives it a row of its own under the site, checked over https without verifying that
+  machine-made certificate, so a side that is off shows as `no` while the site's own row answers.
 
 After starting, it waits two seconds and reports any site that has already exited (a missing script, an Atlas pin npm
 does not have), with the last lines of its output, as a failure. Ctrl-C while it is starting stops at the next site
