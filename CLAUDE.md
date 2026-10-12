@@ -266,6 +266,12 @@ All pinned exactly, all MIT, Apache-2.0, BSD or ISC. The first group came with t
       any GET, so another site's `<img>` could overwrite a visitor's state mid-sign-in; it now answers only a top-level
       navigation (`isTopLevelNavigation`: a document request whose `Sec-Fetch-Dest`, when sent, is `document`). Released
       from CI on the `v0.4.0` tag after merge.
+- [x] 0.4.1, 2026-10-12: `reef-lighthouse` measures a page under the threshold again, up to `--retries` more times (2
+      by default), and the median of its runs decides. A performance score swings a few points between runs of the
+      same page on a shared runner: Streamlane's gate failed a different page by one or two points on about a third
+      of its runs that day (streamlane #830), with nothing in the page changed, and each cost a re-run of the whole
+      job. One low run no longer fails a gate three runs would pass; a page every run finds low still fails, with its
+      last report kept. `median` and `judge` are exported and unit-tested. Lockstep: every package moves to 0.4.1.
 - [x] `sites`, the launcher, 2026-10-05: one dekit TUI for the seven sites on Gary's port map of that
       day (3000 Atlas, 3001 Streamlane, 3002 the CRV app, 3003 markset.org, 3004 intentset.org, 3005
       streamlane.app, 3006 driftline.app), with a preflight, `status`, `restart <name>` and `stop`. Family tooling in

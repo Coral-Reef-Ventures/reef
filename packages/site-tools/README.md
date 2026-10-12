@@ -6,7 +6,7 @@ products' scripts go. The third locks a site behind the door.
 
 ```sh
 reef-serve [--root out] [--port 3140]
-reef-lighthouse [--root out] [--reports lighthouse] [--port 3160] [--threshold 90] [--chrome <path>] [path ...]
+reef-lighthouse [--root out] [--reports lighthouse] [--port 3160] [--threshold 90] [--retries 2] [--chrome <path>] [path ...]
 reef-door-bundle --site <id> [--out out] --door-url <url> --hosts <h1,h2> --jwks-url <url> [--signout-chain id=host,...]
                  [--name <display name>] [--mark <file>] [--mark-dark <file>] [--accent #rrggbb] [--accent-dark #rrggbb]
 ```
@@ -22,7 +22,10 @@ webServer: { command: `pnpm exec reef-serve --port ${port}`, port },
 
 `reef-lighthouse` is the merge gate: Lighthouse on every page in the export's sitemap (or the paths given), with its
 default mobile emulation, each of performance, accessibility, best practices and SEO at the threshold or above. A
-page under it fails the run and leaves its report in `--reports`. Lighthouse itself is not a dependency, because it
+page under it is measured again, up to `--retries` more times (2 by default), and the median of its runs decides:
+a performance score swings a few points between runs of the same page on a shared runner, and one low run should
+not fail a gate three runs would pass, while a page every run finds low still fails. A page under it then fails the
+run and leaves its last report in `--reports`. Lighthouse itself is not a dependency, because it
 bundles axe-core (MPL-2.0), which is outside the family's licence allowlist; it runs through `pnpm dlx`, pinned
 (`--lighthouse-version`). Chrome is Playwright's Chromium when `@playwright/test` is installed beside this package,
 or `--chrome`.
