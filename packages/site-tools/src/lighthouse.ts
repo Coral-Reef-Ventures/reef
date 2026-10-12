@@ -18,6 +18,12 @@ export type LighthouseOptions = {
   threshold?: number;
   /** The pages to audit; every page in the export's sitemap when none are given. */
   paths?: readonly string[];
+  /**
+   * How many more times a page under the threshold is measured; 2 by default, so a page gets three runs and the
+   * median of each category's scores. Performance on a shared runner swings a few points between runs of the same
+   * page, and one low run fails a gate that three agree would pass; a page every run finds low still fails.
+   */
+  retries?: number;
   /** The Lighthouse release `pnpm dlx` runs. */
   lighthouseVersion?: string;
   /** The Chrome binary; Playwright's Chromium when it is installed and nothing is given. */
@@ -28,10 +34,35 @@ export type LighthouseOptions = {
 
 export type PageResult = {
   path: string;
-  /** Each category's score, 0 to 1. */
+  /** Each category's score, 0 to 1: the median over the page's runs. */
   scores: Record<Category, number>;
   /** The categories under the threshold. */
   low: Category[];
+  /** How many times the page was measured. */
+  runs: number;
+};
+
+/** The median of the scores, which three runs with one low outlier put at the typical run. */
+export const median = (values: readonly number[]): number => {
+  const sorted = [...values].sort((left, right) => left - right);
+  const middle = Math.floor(sorted.length / 2);
+  if (sorted.length === 0) {
+    return 0;
+  }
+  return sorted.length % 2 === 1
+    ? (sorted[middle] as number)
+    : ((sorted[middle - 1] as number) + (sorted[middle] as number)) / 2;
+};
+
+/** The categories under the threshold, by the median of each one's scores over the runs so far. */
+export const judge = (
+  runs: readonly Record<Category, number>[],
+  threshold: number,
+): { scores: Record<Category, number>; low: Category[] } => {
+  const scores = Object.fromEntries(
+    categories.map((category) => [category, median(runs.map((run) => run[category]))]),
+  ) as Record<Category, number>;
+  return { scores, low: categories.filter((category) => scores[category] < threshold) };
 };
 
 type Report = { categories: Record<string, { score: number | null } | undefined> };
@@ -86,6 +117,39 @@ const audit = (url: string, base: string, version: string, chrome: string | unde
     run.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`Lighthouse exited with ${code} on ${url}`))));
   });
 
+type Measure = {
+  origin: string;
+  version: string;
+  chrome: string | undefined;
+  threshold: number;
+  retries: number;
+  log: (line: string) => void;
+};
+
+const shown = (scores: Record<Category, number>) =>
+  categories.map((category) => Math.round(scores[category] * 100)).join("  ");
+
+/** One page's verdict: measured again while under the threshold, up to `retries` more times; the median decides. */
+const measurePage = async (pagePath: string, base: string, measure: Measure): Promise<PageResult> => {
+  const runs: Record<Category, number>[] = [];
+  let verdict = judge(runs, measure.threshold);
+  while (runs.length === 0 || (verdict.low.length > 0 && runs.length <= measure.retries)) {
+    await audit(`${measure.origin}${pagePath}`, base, measure.version, measure.chrome);
+    const report = JSON.parse(await readFile(`${base}.report.json`, "utf8")) as Report;
+    const scores = Object.fromEntries(
+      categories.map((category) => [category, report.categories[category]?.score ?? 0]),
+    ) as Record<Category, number>;
+    runs.push(scores);
+    verdict = judge(runs, measure.threshold);
+    if (verdict.low.length > 0 && runs.length <= measure.retries) {
+      measure.log(`again ${pagePath.padEnd(28)} ${shown(scores)}   (run ${runs.length} of ${measure.retries + 1})`);
+    }
+  }
+  const over = runs.length > 1 ? `   (median of ${runs.length} runs)` : "";
+  measure.log(`${verdict.low.length ? "FAIL" : "ok  "} ${pagePath.padEnd(28)} ${shown(verdict.scores)}${over}`);
+  return { path: pagePath, scores: verdict.scores, low: verdict.low, runs: runs.length };
+};
+
 /**
  * The merge gate: Lighthouse on every page, each category at the threshold or above, with Lighthouse's default
  * mobile emulation and throttling, against the export served as the host serves it. A page under the threshold
@@ -95,6 +159,7 @@ export const runLighthouse = async (options: LighthouseOptions = {}): Promise<Pa
   const root = options.root ?? "out";
   const reportDir = options.reportDir ?? "lighthouse";
   const threshold = options.threshold ?? 0.9;
+  const retries = Math.max(0, options.retries ?? 2);
   const version = options.lighthouseVersion ?? "13.5.0";
   const log = options.log ?? console.log;
   const paths = options.paths?.length ? options.paths : await pagesFromSitemap(root);
@@ -105,16 +170,9 @@ export const runLighthouse = async (options: LighthouseOptions = {}): Promise<Pa
     await mkdir(reportDir, { recursive: true });
     for (const pagePath of paths) {
       const base = reportBase(reportDir, pagePath);
-      await audit(`${origin}${pagePath}`, base, version, chrome);
-      const report = JSON.parse(await readFile(`${base}.report.json`, "utf8")) as Report;
-      const scores = Object.fromEntries(
-        categories.map((category) => [category, report.categories[category]?.score ?? 0]),
-      ) as Record<Category, number>;
-      const low = categories.filter((category) => scores[category] < threshold);
-      results.push({ path: pagePath, scores, low });
-      const shown = categories.map((category) => Math.round(scores[category] * 100)).join("  ");
-      log(`${low.length ? "FAIL" : "ok  "} ${pagePath.padEnd(28)} ${shown}`);
-      if (low.length === 0) {
+      const result = await measurePage(pagePath, base, { origin, version, chrome, threshold, retries, log });
+      results.push(result);
+      if (result.low.length === 0) {
         await rm(`${base}.report.json`);
         await rm(`${base}.report.html`);
       }

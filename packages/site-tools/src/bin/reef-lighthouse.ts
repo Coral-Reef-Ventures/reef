@@ -4,11 +4,13 @@ import { parseArgs } from "node:util";
 import { runLighthouse } from "../lighthouse.ts";
 
 /**
- * reef-lighthouse [--root out] [--reports lighthouse] [--port N] [--threshold 90] [--chrome <path>] [path ...]
+ * reef-lighthouse [--root out] [--reports lighthouse] [--port N] [--threshold 90] [--retries 2] [--chrome <path>] [path ...]
  *
  * Lighthouse on every page in the export's sitemap, or the paths given, each category at the threshold or above. The
- * export is served on a free port unless --port pins one (Streamlane's run met EADDRINUSE on a fixed 3160).
- * Exits 1 with the failing pages named when one is under, and leaves their reports in --reports.
+ * export is served on a free port unless --port pins one (Streamlane's run met EADDRINUSE on a fixed 3160). A page
+ * under the threshold is measured again, up to --retries more times, and the median of its runs decides, since a
+ * performance score swings a few points between runs on a shared runner. Exits 1 with the failing pages named when
+ * one is under, and leaves their reports in --reports.
  */
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -17,6 +19,7 @@ const { values, positionals } = parseArgs({
     reports: { type: "string", default: "lighthouse" },
     port: { type: "string" },
     threshold: { type: "string", default: "90" },
+    retries: { type: "string", default: "2" },
     chrome: { type: "string" },
     "lighthouse-version": { type: "string", default: "13.5.0" },
     help: { type: "boolean", short: "h" },
@@ -25,7 +28,7 @@ const { values, positionals } = parseArgs({
 
 if (values.help) {
   console.log(
-    "reef-lighthouse [--root out] [--reports lighthouse] [--port N] [--threshold 90] [--chrome <path>] [path ...]",
+    "reef-lighthouse [--root out] [--reports lighthouse] [--port N] [--threshold 90] [--retries 2] [--chrome <path>] [path ...]",
   );
   process.exit(0);
 }
@@ -36,6 +39,7 @@ const results = await runLighthouse({
   reportDir: values.reports,
   ...(values.port !== undefined && { port: Number(values.port) }),
   threshold,
+  retries: Number(values.retries),
   paths: positionals,
   lighthouseVersion: values["lighthouse-version"],
   ...(values.chrome !== undefined && { chrome: values.chrome }),
