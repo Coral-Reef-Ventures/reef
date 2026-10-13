@@ -16,6 +16,11 @@ export type LighthouseOptions = {
   port?: number;
   /** The least score, 0 to 1, every category must reach on every page; 0.9 by default. */
   threshold?: number;
+  /**
+   * A category's own floor, 0 to 1, in place of the threshold: a site holds performance at 0.85, say, where the
+   * shell's scripts and stylesheets on a shared runner put every page a few points under 90, and the rest at 0.9.
+   */
+  thresholds?: Partial<Record<Category, number>>;
   /** The pages to audit; every page in the export's sitemap when none are given. */
   paths?: readonly string[];
   /**
@@ -58,11 +63,12 @@ export const median = (values: readonly number[]): number => {
 export const judge = (
   runs: readonly Record<Category, number>[],
   threshold: number,
+  thresholds: Partial<Record<Category, number>> = {},
 ): { scores: Record<Category, number>; low: Category[] } => {
   const scores = Object.fromEntries(
     categories.map((category) => [category, median(runs.map((run) => run[category]))]),
   ) as Record<Category, number>;
-  return { scores, low: categories.filter((category) => scores[category] < threshold) };
+  return { scores, low: categories.filter((category) => scores[category] < (thresholds[category] ?? threshold)) };
 };
 
 type Report = { categories: Record<string, { score: number | null } | undefined> };
@@ -122,6 +128,7 @@ type Measure = {
   version: string;
   chrome: string | undefined;
   threshold: number;
+  thresholds: Partial<Record<Category, number>>;
   retries: number;
   log: (line: string) => void;
 };
@@ -132,7 +139,7 @@ const shown = (scores: Record<Category, number>) =>
 /** One page's verdict: measured again while under the threshold, up to `retries` more times; the median decides. */
 const measurePage = async (pagePath: string, base: string, measure: Measure): Promise<PageResult> => {
   const runs: Record<Category, number>[] = [];
-  let verdict = judge(runs, measure.threshold);
+  let verdict = judge(runs, measure.threshold, measure.thresholds);
   while (runs.length === 0 || (verdict.low.length > 0 && runs.length <= measure.retries)) {
     await audit(`${measure.origin}${pagePath}`, base, measure.version, measure.chrome);
     const report = JSON.parse(await readFile(`${base}.report.json`, "utf8")) as Report;
@@ -140,7 +147,7 @@ const measurePage = async (pagePath: string, base: string, measure: Measure): Pr
       categories.map((category) => [category, report.categories[category]?.score ?? 0]),
     ) as Record<Category, number>;
     runs.push(scores);
-    verdict = judge(runs, measure.threshold);
+    verdict = judge(runs, measure.threshold, measure.thresholds);
     if (verdict.low.length > 0 && runs.length <= measure.retries) {
       measure.log(`again ${pagePath.padEnd(28)} ${shown(scores)}   (run ${runs.length} of ${measure.retries + 1})`);
     }
@@ -160,6 +167,7 @@ export const runLighthouse = async (options: LighthouseOptions = {}): Promise<Pa
   const reportDir = options.reportDir ?? "lighthouse";
   const threshold = options.threshold ?? 0.9;
   const retries = Math.max(0, options.retries ?? 2);
+  const thresholds = options.thresholds ?? {};
   const version = options.lighthouseVersion ?? "13.5.0";
   const log = options.log ?? console.log;
   const paths = options.paths?.length ? options.paths : await pagesFromSitemap(root);
@@ -170,7 +178,15 @@ export const runLighthouse = async (options: LighthouseOptions = {}): Promise<Pa
     await mkdir(reportDir, { recursive: true });
     for (const pagePath of paths) {
       const base = reportBase(reportDir, pagePath);
-      const result = await measurePage(pagePath, base, { origin, version, chrome, threshold, retries, log });
+      const result = await measurePage(pagePath, base, {
+        origin,
+        version,
+        chrome,
+        threshold,
+        thresholds,
+        retries,
+        log,
+      });
       results.push(result);
       if (result.low.length === 0) {
         await rm(`${base}.report.json`);
@@ -180,6 +196,10 @@ export const runLighthouse = async (options: LighthouseOptions = {}): Promise<Pa
   } finally {
     server.close();
   }
-  log(`\n${categories.join(", ")}; ${paths.length} pages, threshold ${threshold * 100}`);
+  const floors = categories
+    .filter((category) => thresholds[category] !== undefined)
+    .map((category) => `, ${category} ${(thresholds[category] ?? 0) * 100}`)
+    .join("");
+  log(`\n${categories.join(", ")}; ${paths.length} pages, threshold ${threshold * 100}${floors}`);
   return results;
 };

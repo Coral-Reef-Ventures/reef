@@ -272,6 +272,10 @@ All pinned exactly, all MIT, Apache-2.0, BSD or ISC. The first group came with t
       of its runs that day (streamlane #830), with nothing in the page changed, and each cost a re-run of the whole
       job. One low run no longer fails a gate three runs would pass; a page every run finds low still fails, with its
       last report kept. `median` and `judge` are exported and unit-tested. Lockstep: every package moves to 0.4.1.
+- [x] 0.4.2, 2026-10-13: `reef-lighthouse` takes a category's own floor (`--performance 85`, and the other three
+      likewise) in place of the threshold for that category alone. Streamlane's product pages measure 89 to 95 on the
+      CI runner with the largest paint at 3.5 s from the shell's scripts and stylesheets (streamlane #844), locally 98:
+      the gate keeps performance at 85 there and the rest at 90 until the shell is lighter. Lockstep: 0.4.2.
 - [x] `sites`, the launcher, 2026-10-05: one dekit TUI for the seven sites on Gary's port map of that
       day (3000 Atlas, 3001 Streamlane, 3002 the CRV app, 3003 markset.org, 3004 intentset.org, 3005
       streamlane.app, 3006 driftline.app), with a preflight, `status`, `restart <name>` and `stop`. Family tooling in

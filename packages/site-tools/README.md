@@ -25,7 +25,9 @@ default mobile emulation, each of performance, accessibility, best practices and
 page under it is measured again, up to `--retries` more times (2 by default), and the median of its runs decides:
 a performance score swings a few points between runs of the same page on a shared runner, and one low run should
 not fail a gate three runs would pass, while a page every run finds low still fails. A page under it then fails the
-run and leaves its last report in `--reports`. Lighthouse itself is not a dependency, because it
+run and leaves its last report in `--reports`. A category's own floor (`--performance 85`) stands in for the
+threshold for that category alone, where a site's shell puts every page a few points under 90 on a shared runner
+while the other three categories hold at 90. Lighthouse itself is not a dependency, because it
 bundles axe-core (MPL-2.0), which is outside the family's licence allowlist; it runs through `pnpm dlx`, pinned
 (`--lighthouse-version`). Chrome is Playwright's Chromium when `@playwright/test` is installed beside this package,
 or `--chrome`.
