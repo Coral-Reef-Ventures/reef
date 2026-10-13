@@ -58,3 +58,12 @@ describe("the median over a page's runs", () => {
     expect(judge([run(0.89)], 0.9).low).toEqual(["performance"]);
   });
 });
+
+describe("a category's own floor", () => {
+  it("stands in for the threshold for that category alone", () => {
+    const run = (performance: number) => ({ performance, accessibility: 0.9, "best-practices": 1, seo: 1 });
+    expect(judge([run(0.86)], 0.9, { performance: 0.85 }).low).toEqual([]);
+    expect(judge([run(0.84)], 0.9, { performance: 0.85 }).low).toEqual(["performance"]);
+    expect(judge([{ ...run(0.95), accessibility: 0.89 }], 0.9, { performance: 0.85 }).low).toEqual(["accessibility"]);
+  });
+});
