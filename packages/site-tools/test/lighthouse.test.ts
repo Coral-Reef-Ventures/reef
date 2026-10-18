@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { categories, judge, median, pagesFromSitemap, reportBase } from "../src/lighthouse.ts";
+import { categories, judge, median, pagesFromSitemap, parseShard, reportBase, shardOf } from "../src/lighthouse.ts";
 
 describe("pagesFromSitemap", () => {
   it("reads every page's path, whatever origin the sitemap names", async () => {
@@ -65,5 +65,26 @@ describe("a category's own floor", () => {
     expect(judge([run(0.86)], 0.9, { performance: 0.85 }).low).toEqual([]);
     expect(judge([run(0.84)], 0.9, { performance: 0.85 }).low).toEqual(["performance"]);
     expect(judge([{ ...run(0.95), accessibility: 0.89 }], 0.9, { performance: 0.85 }).low).toEqual(["accessibility"]);
+  });
+});
+
+describe("a shard of the pages", () => {
+  const pages = ["/", "/a/", "/b/", "/c/", "/d/", "/e/", "/f/"];
+
+  it("takes every count-th page from the index-th, so the shards together are every page once", () => {
+    expect(shardOf(pages, { index: 1, count: 3 })).toEqual(["/", "/c/", "/f/"]);
+    expect(shardOf(pages, { index: 2, count: 3 })).toEqual(["/a/", "/d/"]);
+    expect(shardOf(pages, { index: 3, count: 3 })).toEqual(["/b/", "/e/"]);
+    const all = [1, 2, 3].flatMap((index) => shardOf(pages, { index, count: 3 }));
+    expect([...all].sort()).toEqual([...pages].sort());
+    expect(shardOf(pages, { index: 1, count: 1 })).toEqual(pages);
+  });
+
+  it("reads 2/3, and refuses an index outside 1 to the count or anything but two whole numbers", () => {
+    expect(parseShard("2/3")).toEqual({ index: 2, count: 3 });
+    expect(parseShard(" 1/1 ")).toEqual({ index: 1, count: 1 });
+    for (const bad of ["0/3", "4/3", "1/0", "2", "a/b", "1.5/3", "-1/3", ""]) {
+      expect(() => parseShard(bad), bad).toThrow(/--shard takes <index>\/<count>/);
+    }
   });
 });

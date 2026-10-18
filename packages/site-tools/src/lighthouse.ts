@@ -24,6 +24,12 @@ export type LighthouseOptions = {
   /** The pages to audit; every page in the export's sitemap when none are given. */
   paths?: readonly string[];
   /**
+   * One share of the pages, for a gate split across runners: shard `index` of `count`, 1-based as Playwright's
+   * `--shard` is. Lighthouse measures one page at a time, about 14 seconds each on a CI runner, and running pages side
+   * by side on one runner would skew the performance scores it measures; separate runners do not.
+   */
+  shard?: Shard;
+  /**
    * How many more times a page under the threshold is measured; 2 by default, so a page gets three runs and the
    * median of each category's scores. Performance on a shared runner swings a few points between runs of the same
    * page, and one low run fails a gate that three agree would pass; a page every run finds low still fails.
@@ -70,6 +76,26 @@ export const judge = (
   ) as Record<Category, number>;
   return { scores, low: categories.filter((category) => scores[category] < (thresholds[category] ?? threshold)) };
 };
+
+export type Shard = { index: number; count: number };
+
+/** `2/3` as a shard, refusing anything but a whole index from 1 to a whole count of at least 1. */
+export const parseShard = (text: string): Shard => {
+  const match = /^(\d+)\/(\d+)$/.exec(text.trim());
+  const index = Number(match?.[1]);
+  const count = Number(match?.[2]);
+  if (!match || count < 1 || index < 1 || index > count) {
+    throw new Error(`--shard takes <index>/<count>, with the index from 1 to the count, such as 2/3: not "${text}"`);
+  }
+  return { index, count };
+};
+
+/**
+ * Shard `index` of `count`: every `count`-th page, starting at the `index`-th, so the shards are within one page of the
+ * same size and pages of one kind, which sit together in a sitemap, are spread across them.
+ */
+export const shardOf = <Page>(pages: readonly Page[], { index, count }: Shard): Page[] =>
+  pages.filter((_, position) => position % count === index - 1);
 
 type Report = { categories: Record<string, { score: number | null } | undefined> };
 
@@ -170,7 +196,8 @@ export const runLighthouse = async (options: LighthouseOptions = {}): Promise<Pa
   const thresholds = options.thresholds ?? {};
   const version = options.lighthouseVersion ?? "13.5.0";
   const log = options.log ?? console.log;
-  const paths = options.paths?.length ? options.paths : await pagesFromSitemap(root);
+  const every = options.paths?.length ? options.paths : await pagesFromSitemap(root);
+  const paths = options.shard ? shardOf(every, options.shard) : every;
   const chrome = options.chrome ?? (await playwrightChromium());
   const { server, url: origin } = await serve({ root, port: options.port ?? 0 });
   const results: PageResult[] = [];
@@ -196,10 +223,22 @@ export const runLighthouse = async (options: LighthouseOptions = {}): Promise<Pa
   } finally {
     server.close();
   }
+  log(summary(paths.length, every.length, options.shard, threshold, thresholds));
+  return results;
+};
+
+/** The run's last line: what was measured, how many pages (of how many, for a shard), and the floors. */
+const summary = (
+  measured: number,
+  every: number,
+  shard: Shard | undefined,
+  threshold: number,
+  thresholds: Partial<Record<Category, number>>,
+) => {
+  const share = shard ? ` (shard ${shard.index} of ${shard.count}, of ${every})` : "";
   const floors = categories
     .filter((category) => thresholds[category] !== undefined)
     .map((category) => `, ${category} ${(thresholds[category] ?? 0) * 100}`)
     .join("");
-  log(`\n${categories.join(", ")}; ${paths.length} pages, threshold ${threshold * 100}${floors}`);
-  return results;
+  return `\n${categories.join(", ")}; ${measured} pages${share}, threshold ${threshold * 100}${floors}`;
 };

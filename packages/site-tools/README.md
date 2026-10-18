@@ -6,7 +6,7 @@ products' scripts go. The third locks a site behind the door.
 
 ```sh
 reef-serve [--root out] [--port 3140]
-reef-lighthouse [--root out] [--reports lighthouse] [--port 3160] [--threshold 90] [--retries 2] [--chrome <path>] [path ...]
+reef-lighthouse [--root out] [--reports lighthouse] [--port 3160] [--threshold 90] [--retries 2] [--shard 1/3] [--chrome <path>] [path ...]
 reef-door-bundle --site <id> [--out out] --door-url <url> --hosts <h1,h2> --jwks-url <url> [--signout-chain id=host,...]
                  [--name <display name>] [--mark <file>] [--mark-dark <file>] [--accent #rrggbb] [--accent-dark #rrggbb]
 ```
@@ -27,7 +27,10 @@ a performance score swings a few points between runs of the same page on a share
 not fail a gate three runs would pass, while a page every run finds low still fails. A page under it then fails the
 run and leaves its last report in `--reports`. A category's own floor (`--performance 85`) stands in for the
 threshold for that category alone, where a site's shell puts every page a few points under 90 on a shared runner
-while the other three categories hold at 90. Lighthouse itself is not a dependency, because it
+while the other three categories hold at 90. `--shard <index>/<count>` measures one share of the pages, every
+`count`-th from the `index`-th (1-based, as Playwright's `--shard`), so a site whose gate outgrows one runner splits it
+across a CI matrix: Lighthouse measures one page at a time, about 14 seconds each on a CI runner, and pages measured side
+by side on one runner would skew each other's performance scores. Lighthouse itself is not a dependency, because it
 bundles axe-core (MPL-2.0), which is outside the family's licence allowlist; it runs through `pnpm dlx`, pinned
 (`--lighthouse-version`). Chrome is Playwright's Chromium when `@playwright/test` is installed beside this package,
 or `--chrome`.
