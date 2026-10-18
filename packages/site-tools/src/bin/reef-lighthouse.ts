@@ -1,18 +1,19 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
 
-import { categories, runLighthouse } from "../lighthouse.ts";
+import { categories, parseShard, runLighthouse } from "../lighthouse.ts";
 
 /**
  * reef-lighthouse [--root out] [--reports lighthouse] [--port N] [--threshold 90] [--retries 2] [--performance N]
- *   [--accessibility N] [--best-practices N] [--seo N] [--chrome <path>] [path ...]
+ *   [--accessibility N] [--best-practices N] [--seo N] [--shard <index>/<count>] [--chrome <path>] [path ...]
  *
  * Lighthouse on every page in the export's sitemap, or the paths given, each category at the threshold or above. The
  * export is served on a free port unless --port pins one (Streamlane's run met EADDRINUSE on a fixed 3160). A page
  * under the threshold is measured again, up to --retries more times, and the median of its runs decides, since a
  * performance score swings a few points between runs on a shared runner. Exits 1 with the failing pages named when
  * one is under, and leaves their reports in --reports. A category's own floor (--performance 85) stands in for the
- * threshold for that category alone.
+ * threshold for that category alone. --shard 2/3 measures every third page from the second, so a gate splits across
+ * runners.
  */
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -26,6 +27,7 @@ const { values, positionals } = parseArgs({
     accessibility: { type: "string" },
     "best-practices": { type: "string" },
     seo: { type: "string" },
+    shard: { type: "string" },
     chrome: { type: "string" },
     "lighthouse-version": { type: "string", default: "13.5.0" },
     help: { type: "boolean", short: "h" },
@@ -34,7 +36,7 @@ const { values, positionals } = parseArgs({
 
 if (values.help) {
   console.log(
-    "reef-lighthouse [--root out] [--reports lighthouse] [--port N] [--threshold 90] [--retries 2] [--performance N] [--accessibility N] [--best-practices N] [--seo N] [--chrome <path>] [path ...]",
+    "reef-lighthouse [--root out] [--reports lighthouse] [--port N] [--threshold 90] [--retries 2] [--performance N] [--accessibility N] [--best-practices N] [--seo N] [--shard <index>/<count>] [--chrome <path>] [path ...]",
   );
   process.exit(0);
 }
@@ -53,6 +55,7 @@ const results = await runLighthouse({
   retries: Number(values.retries),
   thresholds,
   paths: positionals,
+  ...(values.shard !== undefined && { shard: parseShard(values.shard) }),
   lighthouseVersion: values["lighthouse-version"],
   ...(values.chrome !== undefined && { chrome: values.chrome }),
 });
