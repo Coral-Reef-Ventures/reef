@@ -1,12 +1,23 @@
 import { createPrivateKey } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { createServer, type Server } from "node:https";
+import type { AddressInfo } from "node:net";
 
 import { type APIResponse, type BrowserContext, expect, type Page, test } from "@playwright/test";
 
+import { signoutCookies } from "../src/door/server.ts";
 import { makeKey, signTicket, type TestKey, tamper, ticketClaims } from "../test/door-fixtures.ts";
 import { alphaPage } from "./global-setup.ts";
 
-type Setup = { door: string; alpha: string; beta: string; kid: string; keyFile: string; files: string[] };
+type Setup = {
+  door: string;
+  alpha: string;
+  beta: string;
+  kid: string;
+  keyFile: string;
+  tls: { key: string; cert: string };
+  files: string[];
+};
 const setup = JSON.parse(process.env.DOOR_E2E ?? "null") as Setup;
 const key: TestKey = { kid: setup.kid, privateKey: createPrivateKey(readFileSync(setup.keyFile)), jwk: {} };
 const alphaHost = new URL(setup.alpha).host;
@@ -447,5 +458,49 @@ test.describe("sign-out", () => {
   test("never follows a URL from the query", async ({ page }) => {
     await page.goto(`${setup.alpha}/_door/signout?then=${encodeURIComponent("https://evil.example/")}`);
     expect(page.url()).toBe(`${setup.door}/signout/`);
+  });
+});
+
+/**
+ * The jar, which no gate response alone can drive to the edge: sign-out's own Set-Cookie values, served after enough
+ * refused cookies in the same response to move Firefox's creation clock milliseconds ahead of its own now (it makes
+ * each cookie's creation time unique by stepping a microsecond past the last). A clear that counted from creation
+ * time, as `Max-Age=0` does, was then kept, empty, as a cookie expiring now (streamlane #1081); it must be gone.
+ */
+test.describe("the jar", () => {
+  let server: Server;
+  let origin: string;
+  const sets = [
+    `${session}=signed-in; Max-Age=3600; Path=/; Secure; HttpOnly; SameSite=Lax`,
+    `${state}=nonce; Max-Age=600; Path=/; Secure; HttpOnly; SameSite=None`,
+    `${seen}=1; Max-Age=2592000; Path=/; Secure; HttpOnly; SameSite=Lax`,
+  ];
+  // Each a microsecond on Firefox's clock, so 1,500 always cross a millisecond; short, as WebKit on Linux refuses a
+  // response whose headers pass 64 KB.
+  const refused = Array.from({ length: 1500 }, (_, index) => `c${index}=; Domain=x`);
+
+  test.beforeAll(async () => {
+    server = createServer({ key: readFileSync(setup.tls.key), cert: readFileSync(setup.tls.cert) }, (req, res) => {
+      const cookies = req.url === "/set" ? sets : req.url === "/signout" ? [...refused, ...signoutCookies] : [];
+      res.writeHead(200, { "Content-Type": "text/plain", "Cache-Control": "no-store", "Set-Cookie": cookies });
+      res.end(req.headers.cookie ?? "");
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    origin = `https://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  });
+  test.afterAll(() => new Promise<void>((resolve) => server.close(() => resolve())));
+
+  test("holds none of the three cookies sign-out clears, even with Firefox's creation clock run ahead", async ({
+    page,
+    context,
+  }) => {
+    for (let round = 0; round < 5; round++) {
+      await page.goto(`${origin}/set`);
+      expect((await context.cookies(origin)).map((cookie) => cookie.name).sort()).toEqual([session, seen, state]);
+      await page.goto(`${origin}/signout`);
+      expect(await context.cookies(origin), `round ${round}`).toEqual([]);
+      await page.goto(`${origin}/echo`);
+      expect(await page.locator("body").textContent()).toBe("");
+    }
   });
 });

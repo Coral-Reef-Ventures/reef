@@ -194,7 +194,7 @@ describe("the gate, step by step", () => {
     expect(reply.headers.location).toBe("/docs/");
     expect(setCookies(reply)).toEqual([
       `${sessionCookie}=${jws}; Max-Age=3600; Path=/; Secure; HttpOnly; SameSite=Lax`,
-      `${stateCookie}=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=None`,
+      `${stateCookie}=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; Secure; HttpOnly; SameSite=None`,
       `${seenCookie}=1; Max-Age=2592000; Path=/; Secure; HttpOnly; SameSite=Lax`,
     ]);
     expect(reply.headers["cache-control"]).toBe("no-store");
@@ -249,9 +249,9 @@ describe("the gate, step by step", () => {
       const reply = await send("GET", `/_door/signout${query}`, withSession());
       expect(reply.status).toBe(303);
       expect(setCookies(reply)).toEqual([
-        `${sessionCookie}=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Lax`,
-        `${stateCookie}=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=None`,
-        `${seenCookie}=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Lax`,
+        `${sessionCookie}=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; Secure; HttpOnly; SameSite=Lax`,
+        `${stateCookie}=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; Secure; HttpOnly; SameSite=None`,
+        `${seenCookie}=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; Secure; HttpOnly; SameSite=Lax`,
       ]);
       return reply.headers.location;
     };
@@ -261,6 +261,36 @@ describe("the gate, step by step", () => {
     expect(await walk("")).toBe(`${door}/signout/`);
     expect(await walk("?then=https://evil.example/")).toBe(`${door}/signout/`);
     expect(await walk("?then=done")).toBe(`${door}/signout/`);
+  });
+
+  it("(5) clears each cookie as it was set, with an Expires in the past and no Max-Age (streamlane #1081)", async () => {
+    const split = (header: string) => {
+      const [pair = "", ...attributes] = header.split("; ");
+      const at = pair.indexOf("=");
+      const lifetime = (attribute: string) => /^(Max-Age|Expires)=/.test(attribute);
+      return {
+        name: pair.slice(0, at),
+        value: pair.slice(at + 1),
+        lifetime: attributes.filter(lifetime),
+        rest: attributes.filter((attribute) => !lifetime(attribute)),
+      };
+    };
+    // Every cookie the gate sets with a value, from the responses that set them: the sign-in start and the ticket.
+    const set = [
+      ...setCookies(await send("GET", "/_door/signin?next=%2F", navigate)),
+      ...setCookies(await ticketPost(ticket())),
+    ]
+      .map(split)
+      .filter((cookie) => cookie.value !== "");
+    const cleared = setCookies(await send("GET", "/_door/signout?then=door", withSession())).map(split);
+    expect(set.map((cookie) => cookie.name).sort()).toEqual([sessionCookie, seenCookie, stateCookie].sort());
+    expect(cleared.map((cookie) => cookie.name)).toEqual([sessionCookie, stateCookie, seenCookie]);
+    for (const clearing of cleared) {
+      expect(clearing.value, clearing.name).toBe("");
+      expect(clearing.rest, clearing.name).toEqual(set.find((cookie) => cookie.name === clearing.name)?.rest);
+      // Max-Age would override Expires, and Firefox counts Max-Age=0 from a creation time that can run ahead of now.
+      expect(clearing.lifetime, clearing.name).toEqual(["Expires=Thu, 01 Jan 1970 00:00:00 GMT"]);
+    }
   });
 
   it("(6) serves a page, its RSC payload and its chunks to a valid session, private", async () => {

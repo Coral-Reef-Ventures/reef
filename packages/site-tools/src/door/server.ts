@@ -36,12 +36,25 @@ const securityHeaders = {
   "X-Robots-Tag": "noindex, nofollow",
 };
 
+/** What every door cookie is set and cleared with; a `__Host-` cookie must be Secure, Path=/ and name no Domain. */
+const attributes = (sameSite: "Lax" | "None") => `Path=/; Secure; HttpOnly; SameSite=${sameSite}`;
 const cookie = (name: string, value: string, maxAge: number, sameSite: "Lax" | "None") =>
-  `${name}=${value}; Max-Age=${maxAge}; Path=/; Secure; HttpOnly; SameSite=${sameSite}`;
-const clearSession = cookie(sessionCookie, "", 0, "Lax");
-const clearState = cookie(stateCookie, "", 0, "None");
+  `${name}=${value}; Max-Age=${maxAge}; ${attributes(sameSite)}`;
+/**
+ * A cookie cleared: an empty value and an Expires at the epoch, with the attributes it was set with and no Max-Age.
+ * `Max-Age=0` is not enough in Firefox: it takes the expiry as the cookie's creation time plus zero, and makes each
+ * creation time unique by moving it a microsecond past the last one it handed out, so a clear that lands in the next
+ * millisecond is kept, empty, as a cookie expiring now rather than removed (streamlane #1081). An Expires in the past
+ * is before any creation time in every browser. Max-Age would override it, so the clear sends none.
+ */
+const clear = (name: string, sameSite: "Lax" | "None") =>
+  `${name}=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; ${attributes(sameSite)}`;
+const clearSession = clear(sessionCookie, "Lax");
+const clearState = clear(stateCookie, "None");
 const markSeen = cookie(seenCookie, "1", seenLifetimeSeconds, "Lax");
-const clearSeen = cookie(seenCookie, "", 0, "Lax");
+const clearSeen = clear(seenCookie, "Lax");
+/** The three Set-Cookie values sign-out sends, in order: exported for the browser suite's jar test. */
+export const signoutCookies: readonly string[] = [clearSession, clearState, clearSeen];
 
 /** One value of a cookie, or undefined when it is absent or sent twice (which a `__Host-` cookie never is). */
 export const readCookie = (header: string | undefined, name: string): string | undefined => {
@@ -315,7 +328,7 @@ export const createGate = ({
     if (path === "/_door/signin") return startSignin(request, response, rawQuery, host);
     if (path === "/_door/signout") {
       const then = new URLSearchParams(rawQuery).get("then");
-      return redirect(response, 303, signoutTarget(then), [clearSession, clearState, clearSeen]);
+      return redirect(response, 303, signoutTarget(then), [...signoutCookies]);
     }
     return empty(response, 404);
   };

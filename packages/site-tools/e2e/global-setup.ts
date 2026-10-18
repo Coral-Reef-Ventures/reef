@@ -214,6 +214,9 @@ export default async function globalSetup() {
         "ec",
         "-pkeyopt",
         "ec_paramgen_curve:P-256",
+        // A named curve: macOS's LibreSSL otherwise writes the curve's parameters out, and every browser refuses that.
+        "-pkeyopt",
+        "ec_param_enc:named_curve",
         "-nodes",
         "-days",
         "1",
@@ -320,6 +323,7 @@ export default async function globalSetup() {
       beta: `https://${hostB}`,
       kid: key.kid,
       keyFile: path.join(work, "door-key.pem"),
+      tls: { key: path.join(work, "tls-key.pem"), cert: path.join(work, "tls-cert.pem") },
       files,
     });
     // Checked here so a bad key file fails setup rather than every test.
