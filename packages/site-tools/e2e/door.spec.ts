@@ -430,9 +430,7 @@ test.describe("sign-out", () => {
     page.on("request", (request) => {
       if (request.isNavigationRequest()) visited.push(request.url());
     });
-    // The page replaces itself from a script as it loads, so goto waits only for the response: waiting for its load
-    // event as well races that navigation, and WebKit on Linux ends the test with an internal assertion when it loses.
-    await page.goto(`${setup.door}/signout/done/`, { waitUntil: "commit" });
+    await page.goto(`${setup.door}/signout/done/`);
     await page.waitForURL(`${setup.door}/signout/`);
     await expect(page.locator("#door")).toHaveText("Signed out");
     expect(visited).toEqual([
