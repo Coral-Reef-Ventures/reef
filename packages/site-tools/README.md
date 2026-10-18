@@ -68,7 +68,8 @@ listening on port 3000. For every request, in order:
    top-level navigation starts one (a navigation, or a request without `Sec-Fetch-*` headers that accepts HTML, and
    `Sec-Fetch-Dest: document` when sent); an image, a frame or a fetch gets an empty 401 and no cookie, so another
    site cannot overwrite a visitor's state mid-sign-in.
-5. `/_door/signout?then=<id>` clears all three cookies and goes on by a fixed map: to the gate of the site `<id>` in
+5. `/_door/signout?then=<id>` clears all three cookies (an empty value and an `Expires` at the epoch, with the attributes
+   each was set with and no `Max-Age`, which Firefox can keep for a moment as a cookie expiring now) and goes on by a fixed map: to the gate of the site `<id>` in
    `--signout-chain`, naming the site after it, or, for anything else (`door`, the last stop), to the door's
    `/signout/`. It never redirects to a URL from the query.
 6. With a valid session the export is served as Amplify maps it, HTML and `.txt` as `private, no-store` and

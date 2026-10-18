@@ -276,6 +276,15 @@ All pinned exactly, all MIT, Apache-2.0, BSD or ISC. The first group came with t
       likewise) in place of the threshold for that category alone. Streamlane's product pages measure 89 to 95 on the
       CI runner with the largest paint at 3.5 s from the shell's scripts and stylesheets (streamlane #844), locally 98:
       the gate keeps performance at 85 there and the rest at 90 until the shell is lighter. Lockstep: 0.4.2.
+- [x] 0.4.3, 2026-10-17: the gate clears a cookie with an empty value and `Expires=Thu, 01 Jan 1970 00:00:00 GMT`,
+      the attributes it was set with and no `Max-Age`. `Max-Age=0` left Firefox holding the cleared cookie, empty, as one
+      expiring now (streamlane #1081): Firefox counts Max-Age from the cookie's creation time, which it makes unique by
+      stepping a microsecond past the last one it handed out, so a clear that crossed into the next millisecond was kept
+      instead of removed; and Max-Age overrides Expires, so adding an Expires beside it changes nothing. The browser
+      suite's jar test serves sign-out's own Set-Cookie values after 3,000 refused cookies, which runs Firefox's clock
+      ahead every time: it failed in Firefox with the old clear and passes in all three. Its certificate now names its
+      curve (`ec_param_enc:named_curve`): macOS's LibreSSL wrote the curve's parameters out, which every browser
+      refuses, so the suite could not run there. Lockstep: 0.4.3.
 - [x] `sites`, the launcher, 2026-10-05: one dekit TUI for the seven sites on Gary's port map of that
       day (3000 Atlas, 3001 Streamlane, 3002 the CRV app, 3003 markset.org, 3004 intentset.org, 3005
       streamlane.app, 3006 driftline.app), with a preflight, `status`, `restart <name>` and `stop`. Family tooling in
