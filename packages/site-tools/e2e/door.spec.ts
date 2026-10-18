@@ -475,7 +475,9 @@ test.describe("the jar", () => {
     `${state}=nonce; Max-Age=600; Path=/; Secure; HttpOnly; SameSite=None`,
     `${seen}=1; Max-Age=2592000; Path=/; Secure; HttpOnly; SameSite=Lax`,
   ];
-  const refused = Array.from({ length: 3000 }, (_, index) => `crowd${index}=1; Domain=example.invalid; Path=/`);
+  // Each a microsecond on Firefox's clock, so 1,500 always cross a millisecond; short, as WebKit on Linux refuses a
+  // response whose headers pass 64 KB.
+  const refused = Array.from({ length: 1500 }, (_, index) => `c${index}=; Domain=x`);
 
   test.beforeAll(async () => {
     server = createServer({ key: readFileSync(setup.tls.key), cert: readFileSync(setup.tls.cert) }, (req, res) => {

@@ -281,7 +281,7 @@ All pinned exactly, all MIT, Apache-2.0, BSD or ISC. The first group came with t
       expiring now (streamlane #1081): Firefox counts Max-Age from the cookie's creation time, which it makes unique by
       stepping a microsecond past the last one it handed out, so a clear that crossed into the next millisecond was kept
       instead of removed; and Max-Age overrides Expires, so adding an Expires beside it changes nothing. The browser
-      suite's jar test serves sign-out's own Set-Cookie values after 3,000 refused cookies, which runs Firefox's clock
+      suite's jar test serves sign-out's own Set-Cookie values after 1,500 refused cookies, which runs Firefox's clock
       ahead every time: it failed in Firefox with the old clear and passes in all three. Its certificate now names its
       curve (`ec_param_enc:named_curve`): macOS's LibreSSL wrote the curve's parameters out, which every browser
       refuses, so the suite could not run there. Lockstep: 0.4.3.
