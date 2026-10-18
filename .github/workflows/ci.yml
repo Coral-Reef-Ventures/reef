@@ -23,6 +23,11 @@ jobs:
       # session kept from its response) is decided by each browser, not by the gate.
       - run: pnpm exec playwright install --with-deps chromium firefox webkit
       - run: pnpm run e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: test-results
       # Installs the packed packages into an empty project and uses every entry point, which is the one place a
       # package meets the dependencies a consumer's install resolves for it.
       - run: pnpm run smoke:packed
