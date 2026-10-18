@@ -285,6 +285,12 @@ All pinned exactly, all MIT, Apache-2.0, BSD or ISC. The first group came with t
       ahead every time: it failed in Firefox with the old clear and passes in all three. Its certificate now names its
       curve (`ec_param_enc:named_curve`): macOS's LibreSSL wrote the curve's parameters out, which every browser
       refuses, so the suite could not run there. Lockstep: 0.4.3.
+- [x] 0.5.0, 2026-10-18: `reef-lighthouse --shard <index>/<count>` measures one share of the pages, every `count`-th
+      from the `index`-th, 1-based as Playwright's `--shard`, so a site splits its gate across a CI matrix. Streamlane's
+      Help section put 94 more pages in its sitemap (streamlane #1068, #1090): 138 pages at about 14 seconds each, one
+      at a time, ran past the Site job's 30 minutes and then took 24 of its 60 (streamlane #1083). Measuring pages side
+      by side on one runner would skew the performance scores the gate holds at 85; separate runners do not. Additive,
+      so a minor bump; `shardOf` and `parseShard` are exported and unit-tested. Lockstep: 0.5.0.
 - [x] `sites`, the launcher, 2026-10-05: one dekit TUI for the seven sites on Gary's port map of that
       day (3000 Atlas, 3001 Streamlane, 3002 the CRV app, 3003 markset.org, 3004 intentset.org, 3005
       streamlane.app, 3006 driftline.app), with a preflight, `status`, `restart <name>` and `stop`. Family tooling in
