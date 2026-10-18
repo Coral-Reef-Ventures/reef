@@ -88,6 +88,35 @@ shared rules (body, inline links, focus ring, skip link) and the layout tokens; 
 `--site-text`, `--site-muted`, `--site-border`, `--site-paper`, `--site-link-underline`, `--site-shadow`, and for
 the status tag's attention tone `--site-attention-tint`, `--site-attention-edge`, `--site-attention-text`.
 
+## Product areas
+
+Since 0.6.0, the product page's areas, as both sites present them: `AreaCards`, the overview's cards, a link each with
+its blurb and an optional `tag` (Streamlane's "Planned"), the current one filled; `AreaNav`, the row of pills at the
+top of each area page; and `AreaPage`, the area page template: the row, the status, the headline and lead with the
+first screen under them, a section per claim with its screen on alternating sides and grounds, what is not here yet,
+and the closing band. The areas and the copy are data the site passes; the row and the closing band are elements.
+
+```tsx
+// components/product/AreaPage.tsx in a site
+import { AreaNav, AreaPage, CtaBand } from "@coralreefventures/site";
+import { areas, overview, type AreaCopy } from "@/lib/areas";
+
+export const ProductArea = ({ area }: { area: AreaCopy }) => (
+  <AreaPage
+    area={area}
+    nav={<AreaNav areas={[overview, ...areas]} current={area.key} />}
+    status={(status) => <AreaStatus status={status} />}
+    closing={<CtaBand title="..." text="..." actions={<>{/* the site's buttons */}</>} />}
+  />
+);
+```
+
+`status` draws a status in the site's own tones (by default the attention-toned `Status`), and `screen` draws a screen
+from its caption and shape (by default the labelled `Screenshot`, 16 / 8 under the lead and loaded at once, 16 / 10
+beside a section), for a site that has captures of its own. `AreaCopy` is generic in the site's statuses. The
+headings and paragraphs are plain elements with the page type scale, where the sites' copies used Mantine's `Title`
+and `Text`, so the page reads the same without Mantine's styles for them.
+
 ## Installing
 
 Ships TypeScript and CSS modules as source, with `exports` pointing at `src/`, and no build step. Add it to Next's

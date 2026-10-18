@@ -10,7 +10,7 @@ wordmarks, colors) are each product's own and are not here. Product code is not 
 
 ## Status
 
-Released, at `0.5.0`, and used by both product sites. Four packages are published under the `@coralreefventures`
+Released, at `0.6.0`, and used by both product sites. Four packages are published under the `@coralreefventures`
 scope: `site`, `site-tools`, `theme` and `contact`. Every one is public and MIT, released together at one version.
 
 ## Develop
@@ -42,7 +42,7 @@ Every dependency is pinned exactly and is MIT, Apache-2.0, BSD or ISC.
 
 | Package | What |
 | --- | --- |
-| [`@coralreefventures/site`](packages/site) | The shell both public sites share: frame, header, footer, sections, call to action, screenshot frame, status tag, social-card builder, metadata helpers, the server-only test helper, parametrized by one `SiteConfig` |
+| [`@coralreefventures/site`](packages/site) | The shell both public sites share: frame, header, footer, sections, call to action, screenshot frame, status tag, the product area cards, row and page template, social-card builder, metadata helpers, the server-only test helper, parametrized by one `SiteConfig` |
 | [`@coralreefventures/site-tools`](packages/site-tools) | `reef-serve`, which serves a static export the way Amplify Hosting does; `reef-lighthouse`, the Lighthouse 90+ gate; and `reef-door-bundle`, which locks an export behind the door with a gate that serves every byte |
 | [`@coralreefventures/theme`](packages/theme) | The Mantine theme builder and the CSS-variables generator, taking a product's brand tokens |
 | [`@coralreefventures/contact`](packages/contact) | The contact-form Lambda handler, parametrized by the form's fields and what to do with a message |

@@ -1,0 +1,37 @@
+/*
+ * The area page template (AreaPage.tsx); the type scale is the shell's (page.*). The elements are plain, where the
+ * sites' copies used Mantine's Title and Text, so each rule sets its margins in full: Mantine's Text set them to 0.
+ */
+
+.status {
+  margin: 0 0 12px;
+}
+
+.heroScreen {
+  margin: 40px 0 0;
+}
+
+.paragraph {
+  margin: 14px 0 0;
+  font-size: var(--mantine-font-size-md);
+  line-height: 1.6;
+  color: var(--site-text);
+}
+
+.link {
+  margin: 16px 0 0;
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 700;
+}
+
+.notYet {
+  margin: 12px 0 0;
+  padding-inline-start: 20px;
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.6;
+  color: var(--site-muted);
+
+  & li + li {
+    margin-top: 6px;
+  }
+}

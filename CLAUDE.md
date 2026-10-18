@@ -39,6 +39,7 @@ These are non-negotiable. If a proposed change conflicts with one, the change lo
 packages/
   site/        the shell both public sites share, as server components: SiteFrame, SiteHeader, SiteFooter, Section,
                Split, CtaBand, Screenshot, Status, the page type scale (Page.module.css, exported as `page`), the
+               product areas (src/areas/: AreaCards, AreaNav and the AreaPage template, since 0.6.0), the
                social-card builder, pageMetadata/rootMetadata/robots/sitemap, and createSite(config), which binds
                them to one SiteConfig. `/testing` is clientReach, the server-only walk. `/base.css` is the shared
                global rules and layout tokens; a site's globals.css keeps the colors. Ships .tsx and .module.css as
@@ -291,6 +292,17 @@ All pinned exactly, all MIT, Apache-2.0, BSD or ISC. The first group came with t
       at a time, ran past the Site job's 30 minutes and then took 24 of its 60 (streamlane #1083). Measuring pages side
       by side on one runner would skew the performance scores the gate holds at 85; separate runners do not. Additive,
       so a minor bump; `shardOf` and `parseShard` are exported and unit-tested. Lockstep: 0.5.0.
+- [x] 0.6.0, 2026-10-18: the product areas in `site` (`src/areas/`): `AreaCards`, the overview's cards, `AreaNav`, the
+      row of pills on each area page, and `AreaPage`, the area page template, lifted from both sites' `components/product`
+      (Driftline #42), where their stylesheets were byte-identical and their markup differed only in the closing band,
+      the screen, the status and Streamlane's Planned tag. Each is
+      generic: the areas come in as data (`AreaLink`, `AreaCard` with an optional `tag`, Streamlane's "Planned"), and
+      `AreaPage` takes the copy (`AreaCopy`), the row and the closing band as elements, and a site's own `status` and
+      `screen` renderers, defaulting to the attention-toned `Status` and the labelled `Screenshot`. The sites' copies
+      used Mantine's `Title` and `Text`; here they are plain elements with the page type scale and margins set in full,
+      as invariant 6 asks. Tests render each through react-dom/server, and the smoke test bundles two. Additive, so a
+      minor bump; lockstep: 0.6.0. Until it is published, both sites keep their copies; each switches in a pull request
+      of its own.
 - [x] `sites`, the launcher, 2026-10-05: one dekit TUI for the seven sites on Gary's port map of that
       day (3000 Atlas, 3001 Streamlane, 3002 the CRV app, 3003 markset.org, 3004 intentset.org, 3005
       streamlane.app, 3006 driftline.app), with a preflight, `status`, `restart <name>` and `stop`. Family tooling in

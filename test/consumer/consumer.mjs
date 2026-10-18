@@ -157,6 +157,8 @@ assert.match(html, /aria-current="page">Product<\/a>/);
 assert.match(html, /Jira are trademarks of their owners; Consumer is not affiliated with them/);
 assert.match(html, /class="[^"]*display[^"]*">Hello</);
 assert.match(html, /data-tone="attention">Later</);
+assert.match(html, /<a href="\/product\/" class="[^"]*pill[^"]*" aria-current="page">Overview<\/a>/);
+assert.match(html, /Area<span class="[^"]*tag[^"]*">Planned<\/span>/);
 assert.equal(title, "Product");
 assert.ok(existsSync(fileURLToPath(baseCss)), "base.css is reachable through the package's exports");
 assert.equal(knowsMantine, true);

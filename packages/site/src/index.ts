@@ -1,5 +1,8 @@
 import page from "./page/Page.module.css";
 
+export { type AreaCard, AreaCards } from "./areas/AreaCards";
+export { type AreaLink, AreaNav } from "./areas/AreaNav";
+export { type AreaCopy, AreaPage, type AreaSection, type ScreenRenderer } from "./areas/AreaPage";
 export { type Card, cardPath, cardSegments, socialCardSize } from "./cards";
 export type { FooterLink, HeaderAction, NavItem, SiteConfig, SocialCardStyle } from "./config";
 export { createSite, type Site } from "./create-site";
