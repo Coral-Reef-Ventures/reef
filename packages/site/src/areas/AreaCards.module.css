@@ -1,0 +1,104 @@
+/* The overview's area cards (AreaCards.tsx). */
+
+.nav {
+  margin: 36px 0 0;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  /* Two rows of eight on a wide screen, as many as fit below it. */
+  @media (max-width: 75em) {
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  }
+
+  /* On a phone, one row that scrolls sideways rather than every card stacked. */
+  @media (max-width: 36em) {
+    display: flex;
+    gap: 10px;
+    margin-inline: calc(-1 * var(--site-gutter, 16px));
+    padding: 2px var(--site-gutter, 16px) 8px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+
+    & > li {
+      flex: none;
+      width: 11rem;
+      scroll-snap-align: start;
+    }
+  }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid var(--site-border);
+  border-radius: var(--mantine-radius-md);
+  background: var(--site-bg);
+  color: var(--site-text);
+  text-decoration: none;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    transform 120ms ease;
+
+  &:hover {
+    border-color: var(--site-link-underline);
+    box-shadow: 0 4px 14px var(--site-shadow);
+    transform: translateY(-1px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--site-link-underline);
+    outline-offset: 2px;
+  }
+
+  &[aria-current="page"] {
+    border-color: var(--mantine-primary-color-filled);
+    background: var(--mantine-primary-color-filled);
+    color: var(--mantine-primary-color-contrast);
+    box-shadow: none;
+    transform: none;
+  }
+}
+
+.label {
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+/* A card's tag (Streamlane's "Planned" on an area whose page is not built yet), in the attention tone. */
+.tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1px solid var(--site-attention-edge);
+  border-radius: 999px;
+  background: var(--site-attention-tint);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.5;
+  vertical-align: 1px;
+  color: var(--site-attention-text);
+}
+
+.blurb {
+  font-size: var(--mantine-font-size-xs);
+  line-height: 1.5;
+  color: var(--site-muted);
+
+  [aria-current="page"] > & {
+    color: inherit;
+    opacity: 0.85;
+  }
+}

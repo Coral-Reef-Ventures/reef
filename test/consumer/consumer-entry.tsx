@@ -5,7 +5,7 @@
  * check under plain Node.
  */
 import { createContactHandler } from "@coralreefventures/contact";
-import { createSite, page, Section, Status } from "@coralreefventures/site";
+import { AreaCards, AreaNav, createSite, page, Section, Status } from "@coralreefventures/site";
 import { clientPackages } from "@coralreefventures/site/testing";
 import { canonicalNext, createStaticServer, pagesFromSitemap, serve } from "@coralreefventures/site-tools";
 import { createBrandTheme, themeCss } from "@coralreefventures/theme";
@@ -53,6 +53,11 @@ export const html = renderToStaticMarkup(
     <Section>
       <h1 className={page.display}>Hello</h1>
       <Status tone="attention">Later</Status>
+      <AreaNav areas={[{ key: "product", label: "Overview", href: "/product/" }]} current="product" />
+      <AreaCards
+        areas={[{ key: "a", label: "Area", href: "/product/a/", blurb: "An area", tag: "Planned" }]}
+        current="b"
+      />
     </Section>
   </site.SiteFrame>,
 );

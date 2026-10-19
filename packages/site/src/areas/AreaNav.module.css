@@ -1,0 +1,46 @@
+/* The row of area pills at the top of every area page (AreaNav.tsx). */
+
+.nav {
+  margin: 0 0 28px;
+}
+
+.list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pill {
+  display: inline-block;
+  padding: 6px 12px;
+  border: 1px solid var(--site-border);
+  border-radius: 999px;
+  background: var(--site-bg);
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.4;
+  color: var(--site-text);
+  text-decoration: none;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+
+  &:hover {
+    border-color: var(--site-link-underline);
+    background: var(--site-paper);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--site-link-underline);
+    outline-offset: 2px;
+  }
+
+  &[aria-current="page"] {
+    border-color: var(--mantine-primary-color-filled);
+    background: var(--mantine-primary-color-filled);
+    font-weight: 700;
+    color: var(--mantine-primary-color-contrast);
+  }
+}
