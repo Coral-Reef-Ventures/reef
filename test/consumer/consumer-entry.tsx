@@ -5,7 +5,7 @@
  * check under plain Node.
  */
 import { createContactHandler } from "@coralreefventures/contact";
-import { AreaCards, AreaNav, createSite, page, Section, Status } from "@coralreefventures/site";
+import { AreaCards, AreaNav, createSite, page, Section, Status, SubNav } from "@coralreefventures/site";
 import { clientPackages } from "@coralreefventures/site/testing";
 import { canonicalNext, createStaticServer, pagesFromSitemap, serve } from "@coralreefventures/site-tools";
 import { createBrandTheme, themeCss } from "@coralreefventures/theme";
@@ -49,7 +49,10 @@ const site = createSite({
 });
 
 export const html = renderToStaticMarkup(
-  <site.SiteFrame active="product">
+  <site.SiteFrame
+    active="product"
+    subnav={<SubNav items={[{ key: "a", label: "Area", href: "/product/a/" }]} current="a" label="Areas" />}
+  >
     <Section>
       <h1 className={page.display}>Hello</h1>
       <Status tone="attention">Later</Status>

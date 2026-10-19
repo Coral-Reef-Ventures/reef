@@ -64,7 +64,8 @@ a:not([class]):hover {
   position: absolute;
   left: 8px;
   top: -48px;
-  z-index: 10;
+  /* Above a sticky header (z-index 30). */
+  z-index: 40;
   padding: 8px 12px;
   border-radius: var(--mantine-radius-sm);
   background: var(--mantine-primary-color-filled);

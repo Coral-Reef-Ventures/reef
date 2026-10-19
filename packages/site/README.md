@@ -73,6 +73,23 @@ the 64 px bar, at every width: never hidden below a breakpoint and never copied 
 server component; the element is the product's own, and may be one of its client components. Without it, the header's
 markup is what it was before the field existed, and a test holds that.
 
+`stickyHeader` (optional, since 0.7.0) keeps the header at the top of the screen as a page scrolls. On a phone the
+bar is 56 px rather than 64; on a screen under 30em tall (a phone held sideways) the header scrolls away again; the
+page's anchors and focused controls land below it (`scroll-padding-top` on the root), the folded menu scrolls inside
+the screen, and the skip link sits above it.
+
+`SubNav` (since 0.7.0) is a section's pages as one row of tabs under the bar, passed to the frame as `subnav`, so it
+sits inside the header and sticks with it, and every page of the section is one click away:
+
+```tsx
+<SiteFrame active="product" subnav={<SubNav items={areaTabs} current="delivery" label="Product areas" />}>
+```
+
+The row never wraps. Where it is wider than the screen it scrolls sideways with no scrollbar drawn, the edge with more
+tabs fades (a scroll timeline, so a row that fits never fades), and one inline line of script, run as the row is
+parsed, scrolls the current tab into view. Keep the labels short, one word where it can be, so the row fits the
+column on a laptop. `AreaPage`'s `nav` is optional for a site that puts its areas there.
+
 `active` is typed to the config's nav keys. The root layout takes `site.rootMetadata()` and `site.rootViewport()`;
 `app/robots.ts` returns `site.robots()`, `app/sitemap.ts` returns `site.sitemap()` (with the docs pages added, for a
 site that has them); and `app/og/[...card]/route.tsx` keeps its two literals and takes the rest:

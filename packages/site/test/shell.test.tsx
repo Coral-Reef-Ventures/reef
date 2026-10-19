@@ -7,6 +7,7 @@ import { Status } from "../src/Status";
 import { Section, Split } from "../src/shell/Section";
 import { SiteFooter } from "../src/shell/SiteFooter";
 import { SiteHeader } from "../src/shell/SiteHeader";
+import { SubNav } from "../src/shell/SubNav";
 import { driftlineLike, streamlaneLike } from "./fixtures";
 
 const render = renderToStaticMarkup;
@@ -66,6 +67,57 @@ describe("SiteHeader", () => {
       '<header class="header"><div class="inner"><a href="/" class="home"><span role="img" aria-label="Driftline">Driftline</span></a><nav aria-label="Main" class="nav"><a href="/product/" class="link">Product</a><a href="/pricing/" class="link">Pricing</a></nav><div class="actions"><a href="/early-access/" class="primary" data-hide-below="sm">Request early access</a><details class="menu"><summary class="menuButton" aria-label="Menu"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg></summary><nav aria-label="Main" class="menuPanel"><a href="/product/" class="link">Product</a><a href="/pricing/" class="link">Pricing</a><a href="/early-access/" class="link">Request early access</a></nav></details></div></div></header>';
     expect(render(<SiteHeader site={driftlineLike} />)).toBe(before);
     expect(render(<SiteHeader site={{ ...driftlineLike, headerTools: null }} />)).toBe(before);
+  });
+});
+
+describe("the sticky header and its row of tabs", () => {
+  const tabs = [
+    { key: "work", label: "Work", href: "/product/work/" },
+    { key: "delivery", label: "Delivery", href: "/product/delivery/" },
+  ];
+
+  it("marks the header sticky only for a site that asks", () => {
+    expect(render(<SiteHeader site={{ ...streamlaneLike, stickyHeader: true }} />)).toMatch(
+      /^<header class="header" data-sticky="true">/,
+    );
+    expect(render(<SiteHeader site={{ ...streamlaneLike, stickyHeader: false }} />)).toMatch(
+      /^<header class="header">/,
+    );
+  });
+
+  it("puts the page's tabs in the header, after the bar, so they stick with it", () => {
+    const html = render(
+      <SiteHeader site={streamlaneLike} active="product" subnav={<SubNav items={tabs} label="Product areas" />} />,
+    );
+    const bar = html.indexOf('<div class="inner">');
+    const row = html.indexOf('<div class="subnav"><nav aria-label="Product areas" class="nav">');
+    expect(bar).toBeGreaterThan(-1);
+    expect(row).toBeGreaterThan(bar);
+    expect(html.indexOf("</header>")).toBeGreaterThan(row);
+    expect(html.indexOf("</details>")).toBeLessThan(row);
+  });
+
+  it("passes the tabs through the bound frame", () => {
+    const site = createSite({ ...streamlaneLike, stickyHeader: true });
+    const html = render(
+      <site.SiteFrame active="product" subnav={<SubNav items={tabs} current="work" label="Product areas" />}>
+        Body
+      </site.SiteFrame>,
+    );
+    expect(html).toContain('<header class="header" data-sticky="true">');
+    expect(html).toContain('<a href="/product/work/" class="tab" aria-current="page">Work</a>');
+    expect(html.indexOf('class="subnav"')).toBeLessThan(html.indexOf('<main id="main">'));
+  });
+
+  it("draws one row of tabs, the current one marked, and scrolls it into view", () => {
+    const html = render(<SubNav items={tabs} current="delivery" label="Product areas" />);
+    expect(html).toContain(
+      '<nav aria-label="Product areas" class="nav"><ul class="list">' +
+        '<li><a href="/product/work/" class="tab">Work</a></li>' +
+        '<li><a href="/product/delivery/" class="tab" aria-current="page">Delivery</a></li></ul><script>',
+    );
+    expect(html).toContain("document.currentScript");
+    expect(render(<SubNav items={tabs} label="Product areas" />)).not.toContain('class="tab" aria-current');
   });
 });
 

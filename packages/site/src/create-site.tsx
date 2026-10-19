@@ -15,12 +15,14 @@ import { socialCard, socialCardRoute } from "./social-card";
  */
 export const createSite = <const Key extends string>(config: SiteConfig<Key>) => ({
   config,
-  SiteFrame: ({ active, children }: { active?: Key | undefined; children: ReactNode }) => (
-    <SiteFrame site={config} active={active}>
+  SiteFrame: ({ active, subnav, children }: { active?: Key | undefined; subnav?: ReactNode; children: ReactNode }) => (
+    <SiteFrame site={config} active={active} subnav={subnav}>
       {children}
     </SiteFrame>
   ),
-  SiteHeader: ({ active }: { active?: Key | undefined }) => <SiteHeader site={config} active={active} />,
+  SiteHeader: ({ active, subnav }: { active?: Key | undefined; subnav?: ReactNode }) => (
+    <SiteHeader site={config} active={active} subnav={subnav} />
+  ),
   SiteFooter: () => <SiteFooter site={config} />,
   pageMetadata: (page: PageMetadataInput) => pageMetadata(config, page),
   rootMetadata: () => rootMetadata(config),

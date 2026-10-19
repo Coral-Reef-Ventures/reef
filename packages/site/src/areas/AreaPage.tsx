@@ -67,7 +67,8 @@ export const AreaPage = <S extends string>({
   notYetTitle = "Not here yet",
 }: {
   area: AreaCopy<S>;
-  nav: ReactNode;
+  /** The area row above the headline; none where the site puts the areas in the header's row (SubNav, 0.7.0). */
+  nav?: ReactNode;
   closing: ReactNode;
   status?: (status: S) => ReactNode;
   screen?: ScreenRenderer;

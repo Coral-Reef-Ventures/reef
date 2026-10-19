@@ -1,0 +1,83 @@
+/*
+ * A section's tabs, a second row inside the header (SubNav.tsx). The row scrolls sideways rather than wrap, with no
+ * scrollbar drawn; the tabs' text lines up with the lockup above, and the current tab is underlined in the primary
+ * color.
+ */
+.nav {
+  border-top: 1px solid var(--site-border);
+}
+
+.list {
+  /* The tabs' offsetLeft is measured from here, to scroll the current one into view. */
+  position: relative;
+  display: flex;
+  gap: 2px;
+  max-width: var(--site-max-width);
+  margin: 0 auto;
+  padding: 0 calc(var(--site-gutter) - 10px);
+  box-sizing: border-box;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  list-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  & > li {
+    flex: none;
+  }
+}
+
+/*
+ * The edge with more tabs past it fades, which says the row scrolls. A scroll timeline is inactive while the row
+ * fits, so a row that fits never fades; a browser without scroll timelines draws no fade.
+ */
+@supports (animation-timeline: scroll()) {
+  .list {
+    animation: edges linear both;
+    animation-timeline: scroll(self inline);
+  }
+}
+
+@keyframes edges {
+  0% {
+    mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+  }
+
+  1%,
+  99% {
+    mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent);
+  }
+
+  100% {
+    mask-image: linear-gradient(to right, transparent, #000 40px);
+  }
+}
+
+.tab {
+  display: block;
+  padding: 10px;
+  border-bottom: 2px solid transparent;
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.4;
+  color: var(--site-muted);
+  text-decoration: none;
+  white-space: nowrap;
+
+  &:hover {
+    border-bottom-color: var(--site-border);
+    color: var(--site-text);
+  }
+
+  &:focus-visible {
+    outline-offset: -2px;
+  }
+
+  &[aria-current="page"] {
+    border-bottom-color: var(--mantine-primary-color-filled);
+    font-weight: 700;
+    color: var(--site-text);
+  }
+}

@@ -19,6 +19,11 @@
   box-sizing: border-box;
 }
 
+/* The page's own section's tabs (a SubNav), a second row under the bar. */
+.subnav {
+  display: block;
+}
+
 .home {
   display: inline-flex;
   flex: none;
@@ -146,5 +151,49 @@
   & .link {
     padding: 10px 8px;
     font-size: var(--mantine-font-size-md);
+  }
+}
+
+/*
+ * A sticky header (SiteConfig.stickyHeader) stays at the top as the page scrolls, above everything but the skip link,
+ * and gives back 8 px of its height on a phone. It lets go on a screen too short to spare it, a phone held sideways.
+ */
+.header[data-sticky] {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+
+  @media (max-height: 30em) {
+    position: relative;
+  }
+
+  & .inner {
+    @media (max-width: 48em) {
+      min-height: 56px;
+    }
+  }
+
+  /* The folded menu opens under the header and scrolls inside the screen, since the page under it no longer moves. */
+  & .menuPanel {
+    max-height: calc(100dvh - 100%);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+/* A link to an anchor, or a focused control, lands below the sticky header and its row of tabs. */
+:global(html):has(.header[data-sticky]) {
+  scroll-padding-top: 80px;
+
+  @media (max-height: 30em) {
+    scroll-padding-top: 0;
+  }
+}
+
+:global(html):has(.header[data-sticky] .subnav) {
+  scroll-padding-top: 120px;
+
+  @media (max-height: 30em) {
+    scroll-padding-top: 0;
   }
 }
