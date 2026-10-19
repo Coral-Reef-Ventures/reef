@@ -155,6 +155,14 @@ describe("AreaPage", () => {
     expect(plain).not.toContain("not-yet");
   });
 
+  it("opens on the headline when the areas are in the header's row instead", () => {
+    const headerRow = render(<AreaPage area={watches} closing={closing} />);
+    expect(headerRow).not.toContain('aria-label="Product areas"');
+    expect(headerRow).toMatch(
+      /^<section class="section" data-tone="plain" data-size="hero"[^>]*><div class="container"><div class="status">/,
+    );
+  });
+
   it("uses no Mantine class: the template is plain elements with the shell's type scale", () => {
     expect(html).not.toMatch(/mantine-/);
   });

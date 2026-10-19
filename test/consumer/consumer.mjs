@@ -159,6 +159,10 @@ assert.match(html, /class="[^"]*display[^"]*">Hello</);
 assert.match(html, /data-tone="attention">Later</);
 assert.match(html, /<a href="\/product\/" class="[^"]*pill[^"]*" aria-current="page">Overview<\/a>/);
 assert.match(html, /Area<span class="[^"]*tag[^"]*">Planned<\/span>/);
+assert.match(
+  html,
+  /<nav aria-label="Areas" class="[^"]*"><ul class="[^"]*"><li><a href="\/product\/a\/" class="[^"]*tab[^"]*" aria-current="page">Area<\/a>/,
+);
 assert.equal(title, "Product");
 assert.ok(existsSync(fileURLToPath(baseCss)), "base.css is reachable through the package's exports");
 assert.equal(knowsMantine, true);

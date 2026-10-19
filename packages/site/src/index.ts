@@ -14,6 +14,7 @@ export { Section, Split } from "./shell/Section";
 export { SiteFooter } from "./shell/SiteFooter";
 export { SiteFrame } from "./shell/SiteFrame";
 export { SiteHeader } from "./shell/SiteHeader";
+export { SubNav, type SubNavItem } from "./shell/SubNav";
 export { socialCard, socialCardElement, socialCardRoute } from "./social-card";
 
 /** The marketing pages' type scale (display, title, lead, h2, h3, subhead, body, small, actions, card, eyebrow). */

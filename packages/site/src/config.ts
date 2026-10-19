@@ -52,6 +52,12 @@ export type SiteConfig<Key extends string = string> = {
    * header renders exactly as it did without it.
    */
   headerTools?: ReactNode;
+  /**
+   * The header stays at the top of the screen as the page scrolls, with its `subnav` row if the page has one (since
+   * 0.7.0). It is 56 px on a phone rather than 64, scrolls away again on a screen under 30em tall (a phone held
+   * sideways), and the page's anchors and focus land below it. Absent, the header scrolls with the page as before.
+   */
+  stickyHeader?: boolean;
   footer: {
     /** The footer's first line: who makes the product and where its source is. */
     maker: ReactNode;

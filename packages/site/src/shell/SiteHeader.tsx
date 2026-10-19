@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { HeaderAction, SiteConfig } from "../config";
 import classes from "./SiteHeader.module.css";
 
@@ -17,16 +19,20 @@ const action = ({ label, href, kind, hideBelow }: HeaderAction) => (
 /**
  * The header: lockup, the sections, the actions, and the site's header tools if it has any. A server component with plain links, so a page that ships no
  * client code can carry it; below the md breakpoint the sections fold into a <details> menu, which needs no script,
- * and any action hidden at some width is listed there too.
+ * and any action hidden at some width is listed there too. `subnav` (a SubNav, since 0.7.0) is a second row under the
+ * bar for the page's own section, inside the header so that it sticks with it; a site with `stickyHeader` keeps both
+ * in view as the page scrolls.
  */
 export const SiteHeader = <Key extends string>({
   site,
   active,
+  subnav,
 }: {
   site: SiteConfig<Key>;
   active?: Key | undefined;
+  subnav?: ReactNode;
 }) => (
-  <header className={classes.header}>
+  <header className={classes.header} data-sticky={site.stickyHeader ? "true" : undefined}>
     <div className={classes.inner}>
       <a href="/" className={classes.home}>
         {site.lockup}
@@ -56,5 +62,6 @@ export const SiteHeader = <Key extends string>({
         </details>
       </div>
     </div>
+    {subnav == null ? null : <div className={classes.subnav}>{subnav}</div>}
   </header>
 );

@@ -39,7 +39,8 @@ These are non-negotiable. If a proposed change conflicts with one, the change lo
 packages/
   site/        the shell both public sites share, as server components: SiteFrame, SiteHeader, SiteFooter, Section,
                Split, CtaBand, Screenshot, Status, the page type scale (Page.module.css, exported as `page`), the
-               product areas (src/areas/: AreaCards, AreaNav and the AreaPage template, since 0.6.0), the
+               product areas (src/areas/: AreaCards, AreaNav and the AreaPage template, since 0.6.0), SubNav (a
+               section's tabs in the header's second row, and SiteConfig.stickyHeader, since 0.7.0), the
                social-card builder, pageMetadata/rootMetadata/robots/sitemap, and createSite(config), which binds
                them to one SiteConfig. `/testing` is clientReach, the server-only walk. `/base.css` is the shared
                global rules and layout tokens; a site's globals.css keeps the colors. Ships .tsx and .module.css as
@@ -303,6 +304,15 @@ All pinned exactly, all MIT, Apache-2.0, BSD or ISC. The first group came with t
       as invariant 6 asks. Tests render each through react-dom/server, and the smoke test bundles two. Additive, so a
       minor bump; lockstep: 0.6.0. Until it is published, both sites keep their copies; each switches in a pull request
       of its own.
+- [x] 0.7.0, 2026-10-19: the sticky header and a section's tabs in `site`. `SiteConfig.stickyHeader` keeps the header
+      at the top as a page scrolls (56 px on a phone, let go under 30em tall, anchors and focus landing below it through
+      `scroll-padding-top`, the folded menu scrolling inside the screen, the skip link above it). `SubNav` is a
+      section's pages as one row of tabs that never wraps and scrolls sideways where it is wider than the screen, fading
+      at the edge with more (a scroll timeline, so a row that fits never fades) and scrolled to the current tab by one
+      inline line of script as it is parsed; `SiteFrame`'s `subnav` puts it inside the header, so it sticks with it.
+      `AreaPage`'s `nav` is optional, for a site whose areas are in that row. Asked for by Streamlane's site, whose
+      area pills wrapped to six rows (242 px) on a phone. Additive, and a site without either renders as before;
+      lockstep: 0.7.0.
 - [x] `sites`, the launcher, 2026-10-05: one dekit TUI for the seven sites on Gary's port map of that
       day (3000 Atlas, 3001 Streamlane, 3002 the CRV app, 3003 markset.org, 3004 intentset.org, 3005
       streamlane.app, 3006 driftline.app), with a preflight, `status`, `restart <name>` and `stop`. Family tooling in
