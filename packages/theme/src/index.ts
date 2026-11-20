@@ -1,4 +1,4 @@
-export { type ThemeCssOptions, themeCss, writeThemeCss } from "./css";
+export { type ThemeCssOptions, themeCss } from "./css";
 export {
   type BrandThemeConfig,
   type BrandTokens,

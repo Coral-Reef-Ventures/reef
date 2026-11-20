@@ -180,8 +180,8 @@ Registry reads lag publication by minutes: the workflow log printing `+ name@ver
 - `site-tools`: `"serve": "reef-serve"`, `"lighthouse": "reef-lighthouse"`; Playwright's `webServer.command` becomes
   `pnpm exec reef-serve --port N`.
 - `theme`: `transpilePackages` where the product theme already is; `theme.ts` becomes tokens plus `createBrandTheme`,
-  `generate-css.ts` becomes `writeThemeCss(file, themeCss(theme, { generatedBy, resolver }))`. The committed
-  `theme.css` does not change.
+  `generate-css.ts` becomes `writeFile(file, themeCss(theme, { generatedBy, resolver }))` with Node's own
+  `writeFile`. The committed `theme.css` does not change.
 - `contact`: `handler.ts` becomes `export const handler = createContactHandler({ fields, required, email })`.
 - A product whose `pnpm-workspace.yaml` sets `minimumReleaseAge` (both do, 3 days) cannot install a release made
   today without `minimumReleaseAgeExclude: ["@coralreefventures/*"]`; the packages are the family's own, so the
@@ -313,6 +313,11 @@ All pinned exactly, all MIT, Apache-2.0, BSD or ISC. The first group came with t
       `AreaPage`'s `nav` is optional, for a site whose areas are in that row. Asked for by Streamlane's site, whose
       area pills wrapped to six rows (242 px) on a phone. Additive, and a site without either renders as before;
       lockstep: 0.7.0.
+- [x] 0.8.0, 2026-11-19: `theme` no longer exports `writeThemeCss`. It imported `node:fs/promises` into the
+      package's only entry, which a client page imports for the theme, so `next dev` failed those pages unless the
+      product listed the package in `optimizePackageImports` (streamlane #346, SL-262). A product's `generate-css.ts`
+      calls Node's `writeFile` itself, and a test holds that nothing in the theme's `src/` imports from Node.
+      **Breaking** for the two generate scripts that called it, so a minor bump in 0.x; lockstep: 0.8.0.
 - [x] `sites`, the launcher, 2026-10-05: one dekit TUI for the seven sites on Gary's port map of that
       day (3000 Atlas, 3001 Streamlane, 3002 the CRV app, 3003 markset.org, 3004 intentset.org, 3005
       streamlane.app, 3006 driftline.app), with a preflight, `status`, `restart <name>` and `stop`. Family tooling in
