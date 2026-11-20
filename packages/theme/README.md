@@ -30,10 +30,11 @@ export const theme = createBrandTheme(tokens, {
 
 ```ts
 // packages/theme/scripts/generate-css.ts in a product
-import { themeCss, writeThemeCss } from "@coralreefventures/theme";
+import { writeFile } from "node:fs/promises";
+import { themeCss } from "@coralreefventures/theme";
 import { cssVariablesResolver, theme } from "../src/theme";
 
-await writeThemeCss(
+await writeFile(
   new URL("../theme.css", import.meta.url),
   themeCss(theme, { generatedBy: "packages/theme (pnpm --filter @streamlane/theme generate)", resolver: cssVariablesResolver }),
 );
@@ -48,7 +49,6 @@ Driftline passes none. `generatedBy` is the first line of the stylesheet, which 
   `primaryShade` as Mantine takes them, `fontVariable` the CSS variable an app sets to its web font (Mantine's system
   stack is the fallback), and `black` the light-scheme text color, each color a hex or a brand color's name.
 - `themeCss(theme, { generatedBy?, resolver? })`: the stylesheet.
-- `writeThemeCss(file, css)`: writes it.
 - `brandColor(tokens, nameOrHex)`, `brandFontFamily(variable)`, and the types `BrandTokens`, `BrandThemeConfig`,
   `Scale`, `ThemeCssOptions`.
 

@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 
 import { DEFAULT_THEME } from "@mantine/core";
 import { describe, expect, it } from "vitest";
@@ -64,5 +64,15 @@ describe("createBrandTheme", () => {
     expect(() => createBrandTheme(driftlineTokens, { ...driftlineConfig, primaryColor: "ink" })).toThrow(
       /"ink" is not one of the theme's scales/,
     );
+  });
+});
+
+describe("the entry", () => {
+  // A client page imports the theme, and a node: import in the entry fails it under next dev (streamlane #346).
+  it("imports nothing from Node, so a client page can import it", async () => {
+    const src = new URL("../src/", import.meta.url);
+    for (const file of await readdir(src)) {
+      expect(await readFile(new URL(file, src), "utf8"), file).not.toMatch(/from "node:/);
+    }
   });
 });
