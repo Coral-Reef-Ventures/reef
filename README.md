@@ -36,6 +36,8 @@ Every dependency is pinned exactly and is MIT, Apache-2.0, BSD or ISC.
   consumes each package.
 - [`docs/conventions.md`](docs/conventions.md): the family's rules for commits, releases, changelogs, decision records,
   READMEs, CLAUDE.md files and sites.
+- [`docs/family.md`](docs/family.md): the family loop and the words intentset.org, streamlane.app and driftline.app
+  share, which each site draws and tests from.
 - Each package's README, which is its page on npm.
 
 ## Layout
