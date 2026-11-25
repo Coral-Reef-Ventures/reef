@@ -31,8 +31,9 @@ in the whole; a product's flow shows how work moves inside it.
 
 ### What a site may say about the others
 
-Their names, their family labels and their part of the loop. No screens, no planned capability by name, no price and no
-roadmap detail (decision 17, which limits intentset.org and therefore this file). The independence sentence is the
+Their names, their family labels and their part of the loop. No screens, no planned capabilities by name, no links
+(decision 17, which states this for intentset.org and so limits this file). No price and no roadmap detail either, from
+Intentset's adoption-log rule of 2026-10-06, which keeps the products' insides off its site. The independence sentence is the
 same on all three sites: "None of the three needs the others." Not "each can be adopted", since Driftline is in
 planning.
 
