@@ -420,7 +420,15 @@ test.describe("sign-out", () => {
   test("walks the door's chain from /signout/done/, clearing every site's cookies, and ends at /signout/", async ({
     page,
     context,
+    browserName,
   }) => {
+    // WebKit on Linux fails this cross-site walk in about half of runs with Playwright's own "Assertion error", with or
+    // without the request listener and however the walk starts (Playwright 1.63, WebKit 26.6, its Linux image; reef#26,
+    // reef#27). Chromium and Firefox walk it 10 of 10 there, and WebKit on macOS passes, so only that pairing waits.
+    test.fixme(
+      browserName === "webkit" && process.platform === "linux",
+      "WebKit on Linux: Playwright's Assertion error",
+    );
     await signIn(page, setup.alpha);
     await signIn(page, setup.beta);
     expect(await cookieNamed(context, setup.alpha, session)).toBeDefined();
