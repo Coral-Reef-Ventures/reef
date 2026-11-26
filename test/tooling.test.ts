@@ -277,6 +277,51 @@ describe("the family conventions", () => {
   });
 });
 
+describe("the family loop", () => {
+  // Gary's decisions 8 and 18 of 2026-11-25: three parts, in this order, each with its product and that product's
+  // family label. Each product site holds these same literals in its own test and names docs/family.md as their source,
+  // so a change here is a change to three sites, made on purpose.
+  const parts = [
+    { part: "Intent written down", product: "Intentset", label: "Open source · Early release" },
+    { part: "Carried to production on evidence", product: "Streamlane", label: "Product · In development" },
+    { part: "Proven in use", product: "Driftline", label: "Product · In planning" },
+  ];
+  const family = async () => (await readFile(join(root, "docs", "family.md"), "utf8")).replace(/\s+/g, " ");
+
+  it("lists the three parts in order with their products and labels", async () => {
+    const text = await readFile(join(root, "docs", "family.md"), "utf8");
+    const listed = [...text.matchAll(/^\d+\. \*\*(.+?)\*\* · (\S+) · `(.+?)`$/gm)].map(([, part, product, label]) => ({
+      part,
+      product,
+      label,
+    }));
+    expect(listed).toEqual(parts);
+  });
+
+  it("quotes each label from the conventions' status labels, which link to it", async () => {
+    const conventions = await readFile(join(root, "docs", "conventions.md"), "utf8");
+    const status = conventions
+      .slice(conventions.indexOf("### Status labels and voice"), conventions.indexOf("### Color"))
+      .replace(/\s+/g, " ");
+    for (const { product, label } of parts) {
+      expect(status, product).toContain(`${product} \`${label}\``);
+    }
+    expect(status).toContain("[`family.md`](family.md)");
+  });
+
+  it("draws the return and the repository boundary, and keeps each product's own flow", async () => {
+    const text = await family();
+    expect(text).toContain("one return from the last part to the first");
+    expect(text).toContain('a boundary labelled "Your repository"');
+    expect(text).toContain(
+      "replaces neither: Streamlane's seven item stages and Driftline's five-step release loop stay as they are",
+    );
+    expect(text).toContain("A pass counts while what it checked is unchanged");
+    expect(text).not.toMatch(/counts only at|only a pass on the commit/i);
+    expect(text).toContain('"None of the three needs the others."');
+  });
+});
+
 describe("the door's deployment", () => {
   // The lock depends on this shape: a Static route, or a static/ directory, would be served by Amplify around the gate.
   it("has exactly one route, /* to Compute, and no static/ directory", async () => {

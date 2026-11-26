@@ -72,6 +72,8 @@ tools/
                and invariant 2 does not reach it, since it names the products' repositories by necessity.
 docs/
   conventions.md    the conventions Markset, Intentset and reef follow (2026-10-05); under 300 lines, a test holds it
+  family.md         the family loop (three parts, products, labels), the figure in words and the three sites' shared
+                    words (2026-11-25); a test holds its parts and labels to conventions.md's
 test/
   tooling.test.ts   the repository's shape: scope, version, pins, licence, release order and workflow, READMEs,
                     lockfile, no product scope in src
