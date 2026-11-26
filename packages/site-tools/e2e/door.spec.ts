@@ -354,7 +354,7 @@ test.describe("renewal", () => {
     expect(await cookieNamed(context, setup.alpha, seen)).toBeDefined();
     const visited: string[] = [];
     page.on("request", (request) => {
-      if (request.isNavigationRequest()) visited.push(new URL(request.url()).origin);
+      if (request.resourceType() === "document") visited.push(new URL(request.url()).origin);
     });
     await page.goto(`${setup.alpha}/docs/?tab=api`);
     await page.waitForURL(`${setup.alpha}/docs/?tab=api`);
@@ -427,8 +427,10 @@ test.describe("sign-out", () => {
     expect(await cookieNamed(context, setup.beta, session)).toBeDefined();
 
     const visited: string[] = [];
+    // By resource type, not isNavigationRequest(): WebKit on Linux can swap the page's process mid-chain, and asking a
+    // request whose frame is gone whether it navigates throws Playwright's own "Assertion error" from the listener.
     page.on("request", (request) => {
-      if (request.isNavigationRequest()) visited.push(request.url());
+      if (request.resourceType() === "document") visited.push(request.url());
     });
     await page.goto(`${setup.door}/signout/done/`);
     await page.waitForURL(`${setup.door}/signout/`);
