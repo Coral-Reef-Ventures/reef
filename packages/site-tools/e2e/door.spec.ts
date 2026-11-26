@@ -354,7 +354,7 @@ test.describe("renewal", () => {
     expect(await cookieNamed(context, setup.alpha, seen)).toBeDefined();
     const visited: string[] = [];
     page.on("request", (request) => {
-      if (request.resourceType() === "document") visited.push(new URL(request.url()).origin);
+      if (request.isNavigationRequest()) visited.push(new URL(request.url()).origin);
     });
     await page.goto(`${setup.alpha}/docs/?tab=api`);
     await page.waitForURL(`${setup.alpha}/docs/?tab=api`);
@@ -426,13 +426,18 @@ test.describe("sign-out", () => {
     expect(await cookieNamed(context, setup.alpha, session)).toBeDefined();
     expect(await cookieNamed(context, setup.beta, session)).toBeDefined();
 
+    // The walk starts from a page already at the door, as a person's click does, not from page.goto: on Linux, WebKit's
+    // goto can fail with Playwright's own "Assertion error" when the navigation it tracks becomes a cross-site
+    // redirect chain (reef#26), while a navigation the page starts is followed to its end by waitForURL.
+    // Not /signout/ itself, where the walk ends, or waitForURL would be satisfied before the walk began.
+    await page.goto(`${setup.door}/post`);
     const visited: string[] = [];
-    // By resource type, not isNavigationRequest(): WebKit on Linux can swap the page's process mid-chain, and asking a
-    // request whose frame is gone whether it navigates throws Playwright's own "Assertion error" from the listener.
     page.on("request", (request) => {
-      if (request.resourceType() === "document") visited.push(request.url());
+      if (request.isNavigationRequest()) visited.push(request.url());
     });
-    await page.goto(`${setup.door}/signout/done/`);
+    await page.evaluate((target) => {
+      window.location.href = target;
+    }, `${setup.door}/signout/done/`);
     await page.waitForURL(`${setup.door}/signout/`);
     await expect(page.locator("#door")).toHaveText("Signed out");
     expect(visited).toEqual([
